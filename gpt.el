@@ -55,9 +55,20 @@
     (dolist (cmd gpt-command-history)
       (insert (format "%s\n" cmd)))))
 
+(defun completing-read-space (prompt collection &optional predicate require-match initial-input hist def inherit-input-method)
+  "Read a string in the minibuffer, with completion, treating space as a literal space.
+The arguments are the same as for `completing-read', except that
+space does not trigger completion or cycling, but inserts a space
+character."
+  (let ((minibuffer-local-completion-map
+         (let ((map (copy-keymap minibuffer-local-completion-map)))
+           (define-key map " " 'self-insert-command)
+           map)))
+    (completing-read prompt collection predicate require-match initial-input hist def inherit-input-method)))
+
 (defun gpt-read-command ()
   "Read a GPT command from the user with history and completion."
-  (completing-read "Command: " gpt-command-history nil nil nil 'gpt-command-history))
+  (completing-read-space "Command: " gpt-command-history nil nil nil 'gpt-command-history))
 
 (defun gpt-dwim ()
   "Ask the user for a command, run GPT command on region (or empty string) and provided command, printing the output as it streams in."
