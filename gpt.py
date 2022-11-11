@@ -4,8 +4,19 @@ import sys
 import os
 import argparse
 
-# import jsonlines
-import openai
+from pathlib import Path
+
+try:
+    import openai
+except ImportError:
+    print("Error: OpenAI python package not installed.")
+    print("Run pip install openai.")
+    sys.exit(1)
+
+try:
+    import jsonlines
+except ImportError:
+    jsonlines = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,35 +77,29 @@ def print_and_collect_completions(stream: openai.Completion) -> str:
     return completion_text
 
 
-# def write_to_jsonl(prompt: str, completion: str, file_name: str) -> None:
-#     """Write the prompt and completion to a jsonl file."""
-#     try:
-#         with jsonlines.open(file_name, mode="a") as writer:
-#             writer.write({"prompt": prompt, "completion": completion})
-#     except IOError as e:
-#         print(f"Error: {e}")
-#         sys.exit(1)
+def write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
+    """Write the prompt and completion to a jsonl file."""
+    if jsonlines is None:
+        return
+    if not os.path.exists(path):
+        with open(path, "w") as f:
+            pass  # Create the file
+    try:
+        with jsonlines.open(path, mode="a") as writer:
+            writer.write({"prompt": prompt, "completion": completion})
+    except IOError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
 
 def main() -> None:
-    # Parse command line arguments
     args = parse_args()
-
-    # Read input text from stdin
     input_text = read_input_text()
-
-    # Generate the prompt from input text and command
     prompt = generate_prompt(input_text, args.command)
-
-    # Stream the completions from the openai API
     stream = stream_completions(prompt, args.api_key, args.engine)
-
-    # Print and collect the completions
     completion_text = print_and_collect_completions(stream)
-
-    # Write the prompt and completion to a jsonl file
-    # file_name = "/Users/stuhlmueller/emacs_prompts_completions.jsonl"
-    # write_to_jsonl(prompt, completion_text, file_name)
+    file_name = Path.home() / ".emacs_prompts_completions.jsonl"
+    write_to_jsonl(prompt, completion_text, file_name)
 
 
 if __name__ == "__main__":
