@@ -60,4 +60,4 @@ You can view the command history by calling `display-gpt-command-history`, which
 
 ## License
 
-gpt.el is licensed under the MIT License. See LICENSE for details.
+gpt.el is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for details.
