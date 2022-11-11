@@ -117,11 +117,10 @@ Use the same major mode as INITIAL-BUFFER."
 
 OUTPUT-BUFFER is the buffer where the output is displayed."
   (run-with-timer 1 1
-                  (lambda (timer-object output-buffer)
+                  (lambda (timer-object)
                     (when (process-live-p timer-object)
                       (message "GPT running...")))
-                  process
-                  output-buffer))
+                  process))
 
 (defun gpt-set-process-sentinel (process timer)
   "Set a function to run when the PROCESS finishes or fails.
