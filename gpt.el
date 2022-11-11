@@ -1,24 +1,24 @@
-;; -*- lexical-binding: t; -*-
-
-;;; gpt.el --- Run GPT from Emacs
+;;; gpt.el --- Run instruction-following language models -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2022 Andreas Stuhlmueller
 
 ;; Author: Andreas Stuhlmueller <andreas@ought.org>
 ;; Version: 1.0
-;; Keywords: gpt3, language, copilot
+;; Keywords: gpt3, language, copilot, convenience, tools
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
+;; Package-Requires: ((emacs "24.1"))
 
 ;;; Commentary:
 
 ;; This package defines a set of functions and variables for running
-;; GPT commands from Emacs. It allows the user to enter a command with
-;; history and completion, and optionally use the current region as
-;; input. The output of the command is displayed in a temporary buffer
-;; with the same major mode as the original buffer.  The output is
-;; streamed as it is produced by the GPT process. The user can view
-;; and export the command history to a file.
+;; instruction-following language models like GPT-3.  It allows the
+;; user to enter a command with history and completion, and optionally
+;; use the current region as input.  The output of the command is
+;; displayed in a temporary buffer with the same major mode as the
+;; original buffer.  The output is streamed as it is produced by the
+;; GPT process.  The user can view and export the command history to a
+;; file.
 
 ;;; Code:
 
@@ -40,7 +40,7 @@
 
 (add-to-list 'savehist-additional-variables 'gpt-command-history)
 
-(defun display-gpt-command-history ()
+(defun gpt-display-command-history ()
   "Display the gpt-command-history in a buffer."
   (interactive)
   (with-current-buffer (get-buffer-create "*GPT Command History*")
@@ -49,17 +49,20 @@
     (switch-to-buffer (current-buffer))))
 
 (defun gpt-export-history (file)
-  "Export the gpt-command-history to a file."
+  "Export the gpt-command-history to FILE."
   (interactive "FExport gpt-command-history to file: ")
   (with-temp-file file
     (dolist (cmd gpt-command-history)
       (insert (format "%s\n" cmd)))))
 
-(defun completing-read-space (prompt collection &optional predicate require-match initial-input hist def inherit-input-method)
-  "Read a string in the minibuffer, with completion, treating space as a literal space.
+(defun gpt-completing-read-space (prompt collection &optional predicate require-match initial-input hist def inherit-input-method)
+  "Read string in minibuffer with completion, treating space literally.
+
 The arguments are the same as for `completing-read', except that
 space does not trigger completion or cycling, but inserts a space
-character."
+character.  PROMPT is the prompt to display, COLLECTION is the
+list of possible completions, and the rest of the arguments are
+optional and have the same meaning as for `completing-read'."
   (let ((minibuffer-local-completion-map
          (let ((map (copy-keymap minibuffer-local-completion-map)))
            (define-key map " " 'self-insert-command)
@@ -68,7 +71,7 @@ character."
 
 (defun gpt-read-command ()
   "Read a GPT command from the user with history and completion."
-  (completing-read-space "Command: " gpt-command-history nil nil nil 'gpt-command-history))
+  (gpt-completing-read-space "Command: " gpt-command-history nil nil nil 'gpt-command-history))
 
 (defun gpt-dwim ()
   "Ask the user for a command, run GPT command on region (or empty string) and provided command, printing the output as it streams in."
@@ -80,13 +83,14 @@ character."
                     (buffer-substring-no-properties (region-beginning) (region-end))
                   ""))
          (process (gpt-start-process command output-buffer input))
-         (timer (gpt-start-timer process output-buffer))
-         )
-    (gpt-set-process-sentinel process timer (if (use-region-p) (region-beginning) (point)) (if (use-region-p) (region-end) (point)) output-buffer initial-buffer)
+         (timer (gpt-start-timer process output-buffer)))
+    (gpt-set-process-sentinel process timer)
     (switch-to-buffer-other-window output-buffer)))
 
 (defun gpt-start-process (command output-buffer input)
-  "Start the GPT process with the given command, output buffer, and input. Use shell-file-name and shell-command-switch to run the command in a shell. Send the input to the process stdin and close it."
+  "Start the GPT process with the given COMMAND, OUTPUT-BUFFER, and INPUT.
+Use `shell-file-name' and `shell-command-switch' to run the command in a shell.
+Send the input to the process stdin and close it."
   (let* ((full-command (concat gpt-script-path " "
                                (shell-quote-argument command) " "
                                (shell-quote-argument gpt-openai-key) " "
@@ -95,12 +99,13 @@ character."
     (let ((process (start-process "gpt-process" output-buffer
                                   shell-file-name shell-command-switch full-command)))
       (process-send-string process input)
-      (process-send-string process "\n")      
+      (process-send-string process "\n")
       (process-send-eof process)
       process)))
 
 (defun gpt-create-output-buffer (initial-buffer)
-  "Create a temporary buffer to capture the output of the GPT process. Use the same major mode as the initial buffer."
+  "Create a temporary buffer to capture the output of the GPT process.
+Use the same major mode as INITIAL-BUFFER."
   (let ((output-buffer (generate-new-buffer " *gpt-output*"))
         (mode (buffer-local-value 'major-mode initial-buffer)))
     (with-current-buffer output-buffer
@@ -108,7 +113,9 @@ character."
     output-buffer))
 
 (defun gpt-start-timer (process output-buffer)
-  "Set a timer to run every 1 seconds and print a message if the process is still running."
+  "Set timer to run every second and print message if PROCESS is still running.
+
+OUTPUT-BUFFER is the buffer where the output is displayed."
   (run-with-timer 1 1
                   (lambda (timer-object output-buffer)
                     (when (process-live-p timer-object)
@@ -116,8 +123,13 @@ character."
                   process
                   output-buffer))
 
-(defun gpt-set-process-sentinel (process timer start end output-buffer initial-buffer)
-  "Set a function to run when the GPT process finishes or fails. Cancel the timer and print a message with the status. If the process succeeded, insert the output in the initial buffer at the start and end positions."
+(defun gpt-set-process-sentinel (process timer)
+  "Set a function to run when the PROCESS finishes or fails.
+
+Cancel the timer and print a message with the status.
+
+PROCESS is the GPT process object.
+TIMER is the timer object that cancels the process after a timeout."
   (set-process-sentinel process
                         (lambda (proc status)
                           (when (memq (process-status proc) '(exit signal))
