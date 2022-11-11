@@ -80,7 +80,7 @@
                                (shell-quote-argument command) " "
                                (shell-quote-argument gpt-openai-key) " "
                                (shell-quote-argument gpt-openai-engine))))
-    (message "Running command: %s" command)
+    (message "Running command '%s' on input of length %s" command (length input))
     (let ((process (start-process "gpt-process" output-buffer
                                   shell-file-name shell-command-switch full-command)))
       (process-send-string process input)
