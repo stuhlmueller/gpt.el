@@ -75,7 +75,7 @@ have the same meaning as for `completing-read'."
   (gpt-completing-read-space "Command: " gpt-command-history nil nil nil 'gpt-command-history))
 
 (defun gpt-dwim ()
-  "Ask the user for a command, run GPT command on region (or empty string) and provided command, printing the output as it streams in."
+  "Run user-provided GPT command on region and print output stream."
   (interactive)
   (let* ((initial-buffer (current-buffer))
          (command (gpt-read-command))
