@@ -83,7 +83,7 @@ optional and have the same meaning as for `completing-read'."
                     (buffer-substring-no-properties (region-beginning) (region-end))
                   ""))
          (process (gpt-start-process command output-buffer input))
-         (timer (gpt-start-timer process output-buffer)))
+         (timer (gpt-start-timer process)))
     (gpt-set-process-sentinel process timer)
     (switch-to-buffer-other-window output-buffer)))
 
@@ -112,10 +112,8 @@ Use the same major mode as INITIAL-BUFFER."
       (funcall mode))
     output-buffer))
 
-(defun gpt-start-timer (process output-buffer)
-  "Set timer to run every second and print message if PROCESS is still running.
-
-OUTPUT-BUFFER is the buffer where the output is displayed."
+(defun gpt-start-timer (process)
+  "Set timer to run every second and print message if PROCESS is still running."
   (run-with-timer 1 1
                   (lambda (timer-object)
                     (when (process-live-p timer-object)
