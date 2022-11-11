@@ -1,10 +1,10 @@
+<p align="center">
+  <img src="gpt.gif" alt="gpt.el demo" width="600"/>
+</p>
+
 # gpt.el
 
-gpt.el is an Emacs package for calling instruction-following language models such as GPT-3 Instruct (`text-davinci-002`).
-
-![gpt.el demo](gpt.gif)
-
-You enter a command (with history and completion), and optionally use the current region as input. The output of the command is displayed in a temporary buffer with the same major mode as the original buffer. The output is streamed as it is produced by the generative model. You can also view and export the command history to a file.
+gpt.el is an Emacs package for calling instruction-following language models such as GPT-3 Instruct (`text-davinci-002`). You enter a command (with history and completion), and optionally use the current region as input. The output of the command is displayed in a temporary buffer with the same major mode as the original buffer. The output is streamed as it is produced by the generative model. You can also view and export the command history to a file.
 
 ## Installation
 
