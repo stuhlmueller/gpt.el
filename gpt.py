@@ -4,7 +4,7 @@ import sys
 import os
 import argparse
 
-import jsonlines
+# import jsonlines
 import openai
 
 
@@ -66,14 +66,14 @@ def print_and_collect_completions(stream: openai.Completion) -> str:
     return completion_text
 
 
-def write_to_jsonl(prompt: str, completion: str, file_name: str) -> None:
-    """Write the prompt and completion to a jsonl file."""
-    try:
-        with jsonlines.open(file_name, mode="a") as writer:
-            writer.write({"prompt": prompt, "completion": completion})
-    except IOError as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+# def write_to_jsonl(prompt: str, completion: str, file_name: str) -> None:
+#     """Write the prompt and completion to a jsonl file."""
+#     try:
+#         with jsonlines.open(file_name, mode="a") as writer:
+#             writer.write({"prompt": prompt, "completion": completion})
+#     except IOError as e:
+#         print(f"Error: {e}")
+#         sys.exit(1)
 
 
 def main() -> None:
@@ -93,8 +93,8 @@ def main() -> None:
     completion_text = print_and_collect_completions(stream)
 
     # Write the prompt and completion to a jsonl file
-    file_name = "/Users/stuhlmueller/emacs_prompts_completions.jsonl"
-    write_to_jsonl(prompt, completion_text, file_name)
+    # file_name = "/Users/stuhlmueller/emacs_prompts_completions.jsonl"
+    # write_to_jsonl(prompt, completion_text, file_name)
 
 
 if __name__ == "__main__":
