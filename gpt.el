@@ -41,7 +41,7 @@
 (add-to-list 'savehist-additional-variables 'gpt-command-history)
 
 (defun gpt-display-command-history ()
-  "Display the gpt-command-history in a buffer."
+  "Display the `gpt-command-history' in a buffer."
   (interactive)
   (with-current-buffer (get-buffer-create "*GPT Command History*")
     (erase-buffer)
@@ -49,7 +49,7 @@
     (switch-to-buffer (current-buffer))))
 
 (defun gpt-export-history (file)
-  "Export the gpt-command-history to FILE."
+  "Export the `gpt-command-history' to FILE."
   (interactive "FExport gpt-command-history to file: ")
   (with-temp-file file
     (dolist (cmd gpt-command-history)
@@ -61,8 +61,9 @@
 The arguments are the same as for `completing-read', except that
 space does not trigger completion or cycling, but inserts a space
 character.  PROMPT is the prompt to display, COLLECTION is the
-list of possible completions, and the rest of the arguments are
-optional and have the same meaning as for `completing-read'."
+list of possible completions, and the optional arguments PREDICATE
+REQUIRE-MATCH INITIAL-INPUT HIST DEF and INHERIT-INPUT-METHOD
+have the same meaning as for `completing-read'."
   (let ((minibuffer-local-completion-map
          (let ((map (copy-keymap minibuffer-local-completion-map)))
            (define-key map " " 'self-insert-command)
