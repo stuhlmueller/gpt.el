@@ -29,7 +29,7 @@
 (defvar gpt-command-history nil
   "A list of commands that have been entered by the user for gpt-on-region.")
 
-(defvar gpt-script-path (expand-file-name "gpt.py" (file-name-directory load-file-name))
+(defvar gpt-script-path (expand-file-name "gpt.py" (file-name-directory (or load-file-name buffer-file-name)))
   "The path to the Python script used by gpt.el.")
 
 (defvar gpt-openai-engine "text-davinci-002"
