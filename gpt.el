@@ -7,6 +7,7 @@
 ;; Keywords: gpt3, language, copilot, convenience, tools
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
+;; SPDX-License-Identifier: MIT
 ;; Package-Requires: ((emacs "24.1"))
 
 ;;; Commentary:
