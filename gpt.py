@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2022 Andreas Stuhlmueller
+# License: MIT
+# SPDX-License-Identifier: MIT
+
 import sys
 import os
 import argparse
