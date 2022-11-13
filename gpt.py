@@ -57,7 +57,7 @@ def stream_completions(prompt: str, api_key: str, engine: str) -> openai.Complet
     if api_key == "NOT SET":
         print("Error: API key not set.")
         print(
-            f'Add (setq gpt-openai-key "sk-Aes.....AV8qzL") to your Emacs init.el file.'
+            'Add (setq gpt-openai-key "sk-Aes.....AV8qzL") to your Emacs init.el file.'
         )
         sys.exit(1)
     openai.api_key = api_key
