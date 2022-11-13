@@ -13,8 +13,8 @@ from pathlib import Path
 try:
     import openai
 except ImportError:
-    print("Error: OpenAI python package not installed.")
-    print("Run pip install openai.")
+    print("gpt.el requires the OpenAI Python package.")
+    print("Please install, for example by running `pip install openai'.")
     sys.exit(1)
 
 try:
