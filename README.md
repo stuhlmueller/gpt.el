@@ -10,6 +10,36 @@ gpt.el is an Emacs package that lets you interact with instruction-following lan
 
 To use gpt.el, you need to have the `openai` Python package installed and a valid OpenAI API key. You can install the package with `pip install openai`, and get an API key from https://beta.openai.com/.
 
+### From MELPA package repository
+
+MELPA is a popular third-party package repository for Emacs. To install gpt.el from MELPA, first add MELPA as a source in your Emacs init file:
+
+```elisp
+(require 'package)
+(add-to-list 'package-archives
+             '("melpa" . "https://melpa.org/packages/") t)
+```
+
+Then, use the built-in package manager to install gpt.el:
+
+```
+M-x package-install RET gpt RET
+```
+
+Once installed, you can require the package in your init file:
+
+```elisp
+(require 'gpt)
+```
+
+Alternatively, you can use `use-package`:
+
+```elisp
+(use-package gpt)
+```
+
+### From source
+
 To install gpt.el, clone this repository and add the following to your Emacs init file:
 
 ```elisp
