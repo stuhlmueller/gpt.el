@@ -33,7 +33,7 @@
 (defvar gpt-script-path (expand-file-name "gpt.py" (file-name-directory (or load-file-name buffer-file-name)))
   "The path to the Python script used by gpt.el.")
 
-(defvar gpt-openai-engine "text-davinci-002"
+(defvar gpt-openai-engine "text-davinci-003"
   "The OpenAI engine to use.")
 
 (defvar gpt-openai-key "NOT SET"
