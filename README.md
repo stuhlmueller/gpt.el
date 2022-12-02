@@ -4,7 +4,7 @@
 
 # gpt.el
 
-gpt.el is an Emacs package that lets you interact with instruction-following language models like GPT-3 Instruct (`text-davinci-002`) from your editor. You can type a natural language command (with history and completion support) and optionally use the current region as input for the model. The package displays the output of the model in a temporary buffer that inherits the major mode of the original buffer, and updates it as the model generates more text. You can also browse and save the command history to a file for later reference.
+gpt.el is an Emacs package that lets you interact with instruction-following language models like GPT-3 Instruct (`text-davinci-003`) from your editor. You can type a natural language command (with history and completion support) and optionally use the current region as input for the model. The package displays the output of the model in a temporary buffer that inherits the major mode of the original buffer, and updates it as the model generates more text. You can also browse and save the command history to a file for later reference.
 
 ## Installation
 
