@@ -93,7 +93,7 @@ have the same meaning as for `completing-read'."
   "Start the GPT process with the given COMMAND, OUTPUT-BUFFER, and INPUT.
 Use `shell-file-name' and `shell-command-switch' to run the command in a shell.
 Send the input to the process stdin and close it."
-  (let* ((full-command (concat gpt-script-path " "
+  (let* ((full-command (concat "python " gpt-script-path " "
                                (shell-quote-argument command) " "
                                (shell-quote-argument gpt-openai-key) " "
                                (shell-quote-argument gpt-openai-engine))))
