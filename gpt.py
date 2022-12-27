@@ -26,9 +26,9 @@ except ImportError:
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", help="The command to pass to the model.")
     parser.add_argument("api_key", help="The API key to use for the OpenAI API.")
     parser.add_argument("engine", help="The engine to use for the OpenAI API.")
+    parser.add_argument("prompt_file", help="The file that contains the prompt.")
     return parser.parse_args()
 
 
@@ -38,18 +38,6 @@ def read_input_text() -> str:
     for line in sys.stdin.readlines():
         lines.append(line)
     return "".join(lines)
-
-
-def generate_prompt(input_text: str, command: str) -> str:
-    """Generate a prompt from input text and command."""
-    if input_text.strip():
-        return f'''
-"""
-{input_text}
-"""
-
-{command}<|endofprompt|>'''
-    return command
 
 
 def stream_completions(prompt: str, api_key: str, engine: str) -> openai.Completion:
@@ -100,8 +88,8 @@ def write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
 
 def main() -> None:
     args = parse_args()
-    input_text = read_input_text()
-    prompt = generate_prompt(input_text, args.command)
+    with open(args.prompt_file, "r") as f:
+        prompt = f.read()
     stream = stream_completions(prompt, args.api_key, args.engine)
     completion_text = print_and_collect_completions(stream)
     file_name = Path.home() / ".emacs_prompts_completions.jsonl"
