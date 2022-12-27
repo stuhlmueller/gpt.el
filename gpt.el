@@ -8,7 +8,7 @@
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
-;; Package-Requires: ((emacs "24.1"))
+;; Package-Requires: ((emacs "24.4"))
 
 ;;; Commentary:
 
@@ -73,7 +73,10 @@ have the same meaning as for `completing-read'."
 
 (defun gpt-read-command ()
   "Read a GPT command from the user with history and completion."
-  (gpt-completing-read-space "Command: " gpt-command-history nil nil nil 'gpt-command-history))
+  (let ((cmd (gpt-completing-read-space "Command: " gpt-command-history nil nil nil 'gpt-command-history)))
+    (if (string-equal cmd "n/a")
+        ""
+      (string-trim cmd))))
 
 (defun gpt-dwim ()
   "Run user-provided GPT command on region and print output stream."
@@ -92,9 +95,10 @@ have the same meaning as for `completing-read'."
 
 (defun gpt-make-prompt (input command)
   "Create the prompt string from INPUT text and COMMAND."
-  (if (string= input "")
-      command
-    (concat "\"\"\"\n" input "\n\"\"\"\n\n" command)))
+  (cond ((and (string= input "") (string= command "")) "")
+        ((string= input "") command)
+        ((string= command "") input)
+        (t (concat "\"\"\"\n" input "\n\"\"\"\n\n" command))))
 
 (defun gpt-create-prompt-file (input command)
   "Create a temporary file containing the prompt string from INPUT text and COMMAND."
