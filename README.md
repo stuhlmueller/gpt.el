@@ -68,7 +68,7 @@ You can also customize the engine  by setting the variable `gpt-openai-engine`:
 (setq gpt-openai-engine "code-davinci-002")
 ```
 
-By default, it is set to `text-davinci-002`.
+By default, it is set to `text-davinci-003`.
 
 ## Usage
 
