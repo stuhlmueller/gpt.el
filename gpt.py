@@ -28,6 +28,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("api_key", help="The API key to use for the OpenAI API.")
     parser.add_argument("engine", help="The engine to use for the OpenAI API.")
+    parser.add_argument("max_tokens", help="Max tokens value to be used with the OpenAI API..")
+    parser.add_argument("temperature", help="Temperature value to be used with the OpenAI API..")
     parser.add_argument("prompt_file", help="The file that contains the prompt.")
     return parser.parse_args()
 
@@ -40,7 +42,7 @@ def read_input_text() -> str:
     return "".join(lines)
 
 
-def stream_completions(prompt: str, api_key: str, engine: str) -> openai.Completion:
+def stream_completions(prompt: str, api_key: str, engine: str, max_tokens: str, temperature: str) -> openai.Completion:
     """Stream completions from the openai API."""
     if api_key == "NOT SET":
         print("Error: API key not set.")
@@ -53,8 +55,8 @@ def stream_completions(prompt: str, api_key: str, engine: str) -> openai.Complet
         return openai.Completion.create(
             engine=engine,
             prompt=prompt,
-            max_tokens=2000,
-            temperature=0,
+            max_tokens=int(max_tokens),
+            temperature=float(temperature),
             stream=True,
         )
     except openai.error.APIError as e:
@@ -90,7 +92,7 @@ def main() -> None:
     args = parse_args()
     with open(args.prompt_file, "r") as f:
         prompt = f.read()
-    stream = stream_completions(prompt, args.api_key, args.engine)
+    stream = stream_completions(prompt, args.api_key, args.engine, args.max_tokens, args.temperature)
     completion_text = print_and_collect_completions(stream)
     file_name = Path.home() / ".emacs_prompts_completions.jsonl"
     write_to_jsonl(prompt, completion_text, file_name)
