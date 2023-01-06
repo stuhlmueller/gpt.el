@@ -117,7 +117,7 @@ have the same meaning as for `completing-read'."
 (defun gpt-start-process (prompt-file output-buffer)
   "Start the GPT process with the given PROMPT-FILE and OUTPUT-BUFFER.
 Use `gpt-script-path' as the executable and pass the other arguments as a list."
-  (let ((process (start-process "gpt-process" output-buffer gpt-script-path gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature prompt-file)))
+  (let ((process (start-process "gpt-process" output-buffer "python" gpt-script-path gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature prompt-file)))
     process))
 
 (defun gpt-create-output-buffer (initial-buffer)
