@@ -62,13 +62,13 @@ You need to set the variable `gpt-openai-key` to your OpenAI API key use gpt.el.
 (setq gpt-openai-key "sk-Aes.....AV8qzL")
 ```
 
-You can also customize the engine  by setting the variable `gpt-openai-engine`:
+Optionally, you can customize the engine parameters by setting the variables `gpt-openai-engine`, `gpt-openai-max-tokens`, and `gpt-openai-temperature`. The defaults are:
 
 ```elisp
-(setq gpt-openai-engine "code-davinci-002")
+(setq gpt-openai-engine "text-davinci-003")
+(setq gpt-openai-max-tokens 2000)
+(setq gpt-openai-temperature 0)
 ```
-
-By default, it is set to `text-davinci-002`.
 
 ## Usage
 
@@ -84,7 +84,7 @@ When you invoke `gpt-dwim`, you will be prompted for a command, with history and
 Write a haiku about Emacs.
 ```
 
-If you have an active region, it will be used as contextual input to the command. The output of GPT running the command will be displayed in a temporary buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the generative model. You can switch back to the original buffer at any time.
+If you have an active region, it will be used as contextual input to the command. If you enter n/a as the command, only the region will be passed to the model. The output of GPT running the command will be displayed in a temporary buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the generative model. You can switch back to the original buffer at any time.
 
 You can view the command history by calling `display-gpt-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name.
 

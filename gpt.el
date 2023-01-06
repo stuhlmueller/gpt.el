@@ -8,7 +8,7 @@
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
-;; Package-Requires: ((emacs "24.1"))
+;; Package-Requires: ((emacs "24.4"))
 
 ;;; Commentary:
 
@@ -35,6 +35,12 @@
 
 (defvar gpt-openai-engine "text-davinci-003"
   "The OpenAI engine to use.")
+
+(defvar gpt-openai-max-tokens "2000"
+  "The max_tokens value used with OpenAI engine.")
+
+(defvar gpt-openai-temperature "0"
+  "The temperature value used with OpenAI completion engine.")
 
 (defvar gpt-openai-key "NOT SET"
   "The OpenAI API key to use.")
@@ -73,7 +79,10 @@ have the same meaning as for `completing-read'."
 
 (defun gpt-read-command ()
   "Read a GPT command from the user with history and completion."
-  (gpt-completing-read-space "Command: " gpt-command-history nil nil nil 'gpt-command-history))
+  (let ((cmd (gpt-completing-read-space "Command: " gpt-command-history nil nil nil 'gpt-command-history)))
+    (if (string-equal cmd "n/a")
+        ""
+      (string-trim cmd))))
 
 (defun gpt-dwim ()
   "Run user-provided GPT command on region and print output stream."
@@ -84,26 +93,32 @@ have the same meaning as for `completing-read'."
          (input (if (use-region-p)
                     (buffer-substring-no-properties (region-beginning) (region-end))
                   ""))
-         (process (gpt-start-process command output-buffer input))
+         (prompt-file (gpt-create-prompt-file input command))
+         (process (gpt-start-process prompt-file output-buffer))
          (timer (gpt-start-timer process)))
-    (gpt-set-process-sentinel process timer)
+    (gpt-set-process-sentinel process timer prompt-file)
     (switch-to-buffer-other-window output-buffer)))
 
-(defun gpt-start-process (command output-buffer input)
-  "Start the GPT process with the given COMMAND, OUTPUT-BUFFER, and INPUT.
-Use `shell-file-name' and `shell-command-switch' to run the command in a shell.
-Send the input to the process stdin and close it."
-  (let* ((full-command (concat "python " gpt-script-path " "
-                               (shell-quote-argument command) " "
-                               (shell-quote-argument gpt-openai-key) " "
-                               (shell-quote-argument gpt-openai-engine))))
-    (message "Running command '%s' on input of length %s" command (length input))
-    (let ((process (start-process "gpt-process" output-buffer
-                                  shell-file-name shell-command-switch full-command)))
-      (process-send-string process input)
-      (process-send-string process "\n")
-      (process-send-eof process)
-      process)))
+(defun gpt-make-prompt (input command)
+  "Create the prompt string from INPUT text and COMMAND."
+  (cond ((and (string= input "") (string= command "")) "")
+        ((string= input "") command)
+        ((string= command "") input)
+        (t (concat "\"\"\"\n" input "\n\"\"\"\n\n" command))))
+
+(defun gpt-create-prompt-file (input command)
+  "Create a temporary file containing the prompt string from INPUT text and COMMAND."
+  (let ((temp-file (make-temp-file "gpt-prompt")))
+    (with-temp-file temp-file
+      (insert (gpt-make-prompt input command)))
+    (message "GPT: Prompt written to %s" temp-file)
+    temp-file))
+
+(defun gpt-start-process (prompt-file output-buffer)
+  "Start the GPT process with the given PROMPT-FILE and OUTPUT-BUFFER.
+Use `gpt-script-path' as the executable and pass the other arguments as a list."
+  (let ((process (start-process "gpt-process" output-buffer (concat "python " gpt-script-path) gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature prompt-file)))
+    process))
 
 (defun gpt-create-output-buffer (initial-buffer)
   "Create a temporary buffer to capture the output of the GPT process.
@@ -119,23 +134,26 @@ Use the same major mode as INITIAL-BUFFER."
   (run-with-timer 1 1
                   (lambda (timer-object)
                     (when (process-live-p timer-object)
-                      (message "GPT running...")))
+                      (message "GPT: Running...")))
                   process))
 
-(defun gpt-set-process-sentinel (process timer)
+(defun gpt-set-process-sentinel (process timer prompt-file)
   "Set a function to run when the PROCESS finishes or fails.
 
-Cancel the timer and print a message with the status.
+Cancel the timer, delete the prompt file, and print a message with the status.
 
 PROCESS is the GPT process object.
-TIMER is the timer object that cancels the process after a timeout."
+TIMER is the timer object that cancels the process after a timeout.
+PROMPT-FILE is the temporary file containing the prompt."
   (set-process-sentinel process
                         (lambda (proc status)
                           (when (memq (process-status proc) '(exit signal))
                             (cancel-timer timer)
                             (if (zerop (process-exit-status proc))
-                                (message "GPT finished successfully.")
-                              (message "GPT failed: %s" status))))))
+                                (progn
+                                  (delete-file prompt-file)
+                                  (message "GPT: Finished successfully."))
+                              (message "GPT: Failed: %s" status))))))
 
 (provide 'gpt)
 
