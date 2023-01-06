@@ -36,6 +36,12 @@
 (defvar gpt-openai-engine "text-davinci-003"
   "The OpenAI engine to use.")
 
+(defvar gpt-openai-max-tokens "2000"
+  "The max_tokens value used with OpenAI engine.")
+
+(defvar gpt-openai-temperature "0"
+  "The temperature value used with OpenAI completion engine.")
+
 (defvar gpt-openai-key "NOT SET"
   "The OpenAI API key to use.")
 
@@ -111,7 +117,7 @@ have the same meaning as for `completing-read'."
 (defun gpt-start-process (prompt-file output-buffer)
   "Start the GPT process with the given PROMPT-FILE and OUTPUT-BUFFER.
 Use `gpt-script-path' as the executable and pass the other arguments as a list."
-  (let ((process (start-process "gpt-process" output-buffer gpt-script-path gpt-openai-key gpt-openai-engine prompt-file)))
+  (let ((process (start-process "gpt-process" output-buffer gpt-script-path gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature prompt-file)))
     process))
 
 (defun gpt-create-output-buffer (initial-buffer)
