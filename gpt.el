@@ -47,6 +47,7 @@
 
 (add-to-list 'savehist-additional-variables 'gpt-command-history)
 
+;;;###autoload
 (defun gpt-display-command-history ()
   "Display the `gpt-command-history' in a buffer."
   (interactive)
@@ -55,6 +56,7 @@
     (insert (mapconcat #'identity gpt-command-history "\n"))
     (switch-to-buffer (current-buffer))))
 
+;;;###autoload
 (defun gpt-export-history (file)
   "Export the `gpt-command-history' to FILE."
   (interactive "FExport gpt-command-history to file: ")
@@ -84,6 +86,7 @@ have the same meaning as for `completing-read'."
         ""
       (string-trim cmd))))
 
+;;;###autoload
 (defun gpt-dwim (&rest args)
   "Run user-provided GPT command on region and print output stream."
   (interactive)
