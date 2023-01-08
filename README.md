@@ -78,6 +78,16 @@ To run a generative model command, use the `gpt-dwim` function. You can bind it 
 (global-set-key (kbd "M-C-g") 'gpt-dwim)
 ```
 
+It is possible to override gpt-openai-* parameters by passing optional temperature, max-tokens or engine parameters to `gpt-dwim`:
+
+```elisp
+(global-set-key (kbd "M-C-g") (lambda ()
+                                (interactive)
+                                (gpt-dwim :temperature "0.5"
+                                          :max-tokens "500"
+                                          :engine "text-curie-001")))
+```
+
 When you invoke `gpt-dwim`, you will be prompted for a command, with history and completion. The command can be any text. For example:
 
 ```

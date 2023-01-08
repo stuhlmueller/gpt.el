@@ -84,7 +84,7 @@ have the same meaning as for `completing-read'."
         ""
       (string-trim cmd))))
 
-(defun gpt-dwim ()
+(defun gpt-dwim (&rest args)
   "Run user-provided GPT command on region and print output stream."
   (interactive)
   (let* ((initial-buffer (current-buffer))
@@ -94,7 +94,7 @@ have the same meaning as for `completing-read'."
                     (buffer-substring-no-properties (region-beginning) (region-end))
                   ""))
          (prompt-file (gpt-create-prompt-file input command))
-         (process (gpt-start-process prompt-file output-buffer))
+         (process (gpt-start-process prompt-file output-buffer args))
          (timer (gpt-start-timer process)))
     (gpt-set-process-sentinel process timer prompt-file)
     (switch-to-buffer-other-window output-buffer)))
@@ -114,10 +114,17 @@ have the same meaning as for `completing-read'."
     (message "GPT: Prompt written to %s" temp-file)
     temp-file))
 
-(defun gpt-start-process (prompt-file output-buffer)
+(defun gpt-start-process (prompt-file output-buffer &optional args)
   "Start the GPT process with the given PROMPT-FILE and OUTPUT-BUFFER.
 Use `gpt-script-path' as the executable and pass the other arguments as a list."
-  (let ((process (start-process "gpt-process" output-buffer "python" gpt-script-path gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature prompt-file)))
+  (let* ((temperature (plist-get  args :temperature))
+	 (max-tokens (plist-get args :max-tokens))
+	 (engine (plist-get args :engine))
+	 (process (start-process "gpt-process" output-buffer "python" gpt-script-path gpt-openai-key
+				 (if engine engine gpt-openai-engine)
+				 (if max-tokens max-tokens gpt-openai-max-tokens)
+				 (if temperature temperature gpt-openai-temperature)
+				 prompt-file)))
     process))
 
 (defun gpt-create-output-buffer (initial-buffer)
