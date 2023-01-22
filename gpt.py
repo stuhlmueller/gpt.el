@@ -67,8 +67,11 @@ def stream_completions(prompt: str, api_key: str, engine: str, max_tokens: str, 
 def print_and_collect_completions(stream: openai.Completion) -> str:
     """Print and collect completions from the stream."""
     completion_text = ""
-    for completion in stream:
-        print(completion.choices[0].text, end="", flush=True)
+    for i, completion in enumerate(stream):
+        this_text = completion.choices[0].text
+        if i == 0:
+            this_text = this_text.lstrip("\n")
+        print(this_text, end="", flush=True)
         completion_text += completion.choices[0].text
     return completion_text
 

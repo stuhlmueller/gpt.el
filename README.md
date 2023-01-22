@@ -72,6 +72,8 @@ Optionally, you can customize the engine parameters by setting the variables `gp
 
 ## Usage
 
+### Running commands
+
 To run a generative model command, use the `gpt-dwim` function. You can bind it to a key of your choice, for example:
 
 ```elisp
@@ -86,7 +88,13 @@ Write a haiku about Emacs.
 
 If you have an active region, it will be used as contextual input to the command. If you enter n/a as the command, only the region will be passed to the model. The output of GPT running the command will be displayed in a temporary buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the generative model. You can switch back to the original buffer at any time.
 
-You can view the command history by calling `display-gpt-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name.
+### Follow-up commands
+
+In the gpt-output buffer, `C-c C-c` is bound to running a follow-up command that is provided the previous commands and outputs as input. For example, you can run a command "Explain this in more detail" to get more information about the previous response.
+
+### History
+
+You can view the command history by calling `gpt-display-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name.
 
 ## License
 

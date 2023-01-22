@@ -18,8 +18,13 @@
 ;; use the current region as input.  The output of the command is
 ;; displayed in a temporary buffer with the same major mode as the
 ;; original buffer.  The output is streamed as it is produced by the
-;; GPT process.  The user can view and export the command history to a
-;; file.
+;; GPT process.  The user can enter a follow-up command in the output
+;; buffer, which will provide the output, the follow-up command to GPT
+;; as a new prompt.  The follow-up output will be appended to the
+;; output buffer.  The user can view and export the command history to
+;; a file.
+
+
 
 ;;; Code:
 
@@ -57,7 +62,7 @@
 
 (defun gpt-export-history (file)
   "Export the `gpt-command-history' to FILE."
-  (interactive "FExport gpt-command-history to file: ")
+  (interactive "Export gpt-command-history to file: ")
   (with-temp-file file
     (dolist (cmd gpt-command-history)
       (insert (format "%s\n" cmd)))))
@@ -84,20 +89,39 @@ have the same meaning as for `completing-read'."
         ""
       (string-trim cmd))))
 
+(defun gpt-run-command (command input output-buffer)
+  "Run GPT command on input and append output stream to output-buffer."
+  (with-current-buffer output-buffer
+    (insert (format "User: %s\n\nAssistant:" command))
+    (goto-char (point-max))
+    (font-lock-fontify-buffer)
+    (let* ((prompt-file (gpt-create-prompt-file input command))
+           (process (gpt-start-process prompt-file output-buffer))
+           (timer (gpt-start-timer process)))
+      (gpt-set-process-sentinel process timer prompt-file)
+      (message "GPT: Running command..."))))
+
 (defun gpt-dwim ()
   "Run user-provided GPT command on region and print output stream."
   (interactive)
   (let* ((initial-buffer (current-buffer))
          (command (gpt-read-command))
-         (output-buffer (gpt-create-output-buffer initial-buffer))
-         (input (if (use-region-p)
-                    (buffer-substring-no-properties (region-beginning) (region-end))
-                  ""))
-         (prompt-file (gpt-create-prompt-file input command))
-         (process (gpt-start-process prompt-file output-buffer))
-         (timer (gpt-start-timer process)))
-    (gpt-set-process-sentinel process timer prompt-file)
+         (output-buffer (gpt-create-output-buffer initial-buffer)))
+    (gpt-run-command command
+                     (if (use-region-p)
+                         (buffer-substring-no-properties (region-beginning) (region-end))
+                       "")
+                     output-buffer)
     (switch-to-buffer-other-window output-buffer)))
+
+(defun gpt-follow-up ()
+  "Run a follow-up GPT command on the output buffer and append the output stream."
+  (interactive)
+  (unless (eq major-mode 'gpt-mode)
+    (user-error "Not in a gpt output buffer"))
+  (let ((command (gpt-read-command)))
+    (insert "\n\n")
+    (gpt-run-command command (buffer-string) (current-buffer))))
 
 (defun gpt-make-prompt (input command)
   "Create the prompt string from INPUT text and COMMAND."
@@ -122,11 +146,10 @@ Use `gpt-script-path' as the executable and pass the other arguments as a list."
 
 (defun gpt-create-output-buffer (initial-buffer)
   "Create a temporary buffer to capture the output of the GPT process.
-Use the same major mode as INITIAL-BUFFER."
-  (let ((output-buffer (generate-new-buffer " *gpt-output*"))
-        (mode (buffer-local-value 'major-mode initial-buffer)))
+Use the `gpt-mode' for the output buffer."
+  (let ((output-buffer (generate-new-buffer " *gpt*")))
     (with-current-buffer output-buffer
-      (funcall mode))
+      (gpt-mode))
     output-buffer))
 
 (defun gpt-start-timer (process)
@@ -154,6 +177,43 @@ PROMPT-FILE is the temporary file containing the prompt."
                                   (delete-file prompt-file)
                                   (message "GPT: Finished successfully."))
                               (message "GPT: Failed: %s" status))))))
+
+(defface gpt-input-face
+  '((t :inherit comint-highlight-prompt))
+  "Face for the input of the GPT commands.")
+
+(defface gpt-output-face
+  '((t :inherit default))
+  "Face for the output of the GPT commands.")
+
+(defvar gpt-font-lock-keywords
+  '(("^\\(User:\\s-*\\)\\(.*\\)$"
+     (1 '(face nil invisible gpt-prefix))
+     (2 'gpt-input-face))
+    ("^\\(Assistant:\\s-*\\)\\(.*\\)$"
+     (1 '(face nil invisible gpt-prefix))
+     (2 'gpt-output-face))))
+
+(define-derived-mode gpt-mode text-mode "GPT"
+  "A mode for displaying the output of GPT commands."
+  (setq-local word-wrap t)
+  (setq-local font-lock-defaults '(gpt-font-lock-keywords))
+  (setq-local font-lock-extra-managed-props '(invisible))
+  (font-lock-mode 1)
+  (font-lock-fontify-buffer)
+  (add-to-invisibility-spec 'gpt-prefix))
+
+(defun gpt-toggle-prefix ()
+  "Toggle the visibility of the GPT prefixes."
+  (interactive)
+  (if (and (listp buffer-invisibility-spec)
+           (memq 'gpt-prefix buffer-invisibility-spec))
+        (remove-from-invisibility-spec 'gpt-prefix)
+    (add-to-invisibility-spec 'gpt-prefix))
+  (font-lock-fontify-buffer))
+
+(define-key gpt-mode-map (kbd "C-c C-c") 'gpt-follow-up)
+(define-key gpt-mode-map (kbd "C-c C-p") 'gpt-toggle-prefix)
 
 (provide 'gpt)
 
