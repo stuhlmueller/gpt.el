@@ -92,7 +92,7 @@ have the same meaning as for `completing-read'."
 (defun gpt-run-command (command input output-buffer)
   "Run GPT command on input and append output stream to output-buffer."
   (with-current-buffer output-buffer
-    (insert (format "User: %s\n\nAssistant:" command))
+    (insert (format "User: %s\n\nAssistant: " command))
     (goto-char (point-max))
     (font-lock-fontify-buffer)
     (let* ((prompt-file (gpt-create-prompt-file input command))
