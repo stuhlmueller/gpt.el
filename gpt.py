@@ -52,9 +52,12 @@ def stream_completions(prompt: str, api_key: str, engine: str, max_tokens: str, 
         sys.exit(1)
     openai.api_key = api_key
     try:
-        return openai.Completion.create(
-            engine=engine,
-            prompt=prompt,
+        return openai.ChatCompletion.create(
+            model=engine,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
             max_tokens=int(max_tokens),
             temperature=float(temperature),
             stream=True,
@@ -63,16 +66,21 @@ def stream_completions(prompt: str, api_key: str, engine: str, max_tokens: str, 
         print(f"Error: {e}")
         sys.exit(1)
 
+    except Exception as e:
+        print(f"Un-expected error: {e}")
+        sys.exit(1)
 
 def print_and_collect_completions(stream: openai.Completion) -> str:
     """Print and collect completions from the stream."""
     completion_text = ""
-    for i, completion in enumerate(stream):
-        this_text = completion.choices[0].text
-        if i == 0:
-            this_text = this_text.lstrip("\n")
-        print(this_text, end="", flush=True)
-        completion_text += completion.choices[0].text
+    for completion in stream:
+        if 'choices' not in completion:
+            continue
+        completion_response = completion.choices
+        if 'content' in completion_response[0]['delta']:
+            this_text = completion_response[0]['delta']['content']
+            print(this_text, end="", flush=True)
+            completion_text += completion_response[0]['delta']['content']
     return completion_text
 
 
