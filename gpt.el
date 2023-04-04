@@ -175,6 +175,8 @@ PROMPT-FILE is the temporary file containing the prompt."
                             (if (zerop (process-exit-status proc))
                                 (progn
                                   (delete-file prompt-file)
+                                  (with-current-buffer (process-buffer proc)
+                                    (gpt-mode))
                                   (message "GPT: Finished successfully."))
                               (message "GPT: Failed: %s" status))))))
 
@@ -186,13 +188,15 @@ PROMPT-FILE is the temporary file containing the prompt."
   '((t :inherit default))
   "Face for the output of the GPT commands.")
 
-(defvar gpt-font-lock-keywords
+(setq gpt-font-lock-keywords
   '(("^\\(User:\\s-*\\)\\(.*\\)$"
      (1 '(face nil invisible gpt-prefix))
      (2 'gpt-input-face))
     ("^\\(Assistant:\\s-*\\)\\(.*\\)$"
      (1 '(face nil invisible gpt-prefix))
-     (2 'gpt-output-face))))
+     (2 'gpt-output-face))
+    ("```\\([\0-\377[:nonascii:]]*?\\)```"  ; match code snippets enclosed in backticks
+     (1 'font-lock-constant-face))))
 
 (define-derived-mode gpt-mode text-mode "GPT"
   "A mode for displaying the output of GPT commands."
