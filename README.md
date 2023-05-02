@@ -4,7 +4,7 @@
 
 # gpt.el
 
-gpt.el is an Emacs package that lets you interact with instruction-following language models like GPT-3 Instruct (`text-davinci-003`) from your editor. You can type a natural language command (with history and completion support) and optionally use the current region as input for the model. The package displays the output of the model in a temporary buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse and save the command history to a file for later reference.
+gpt.el is an Emacs package that lets you interact with instruction-following language models like ChatGPT and GPT-4 from your editor. You can type a natural language command (with history and completion support) and optionally use the current region as input for the model. The package displays the output of the model in a temporary buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse and save the command history to a file for later reference.
 
 ## Installation
 
@@ -62,10 +62,12 @@ You need to set the variable `gpt-openai-key` to your OpenAI API key use gpt.el.
 (setq gpt-openai-key "sk-Aes.....AV8qzL")
 ```
 
-Optionally, you can customize the engine parameters by setting the variables `gpt-openai-engine`, `gpt-openai-max-tokens`, and `gpt-openai-temperature`. The defaults are:
+Optionally, you can customize the engine parameters by setting the variables `gpt-openai-engine`, `gpt-openai-use-chat-api`, `gpt-openai-org`, `gpt-openai-max-tokens`, and `gpt-openai-temperature`. The defaults are:
 
 ```elisp
-(setq gpt-openai-engine "text-davinci-003")
+(setq gpt-openai-engine "gpt-4")
+(setq gpt-openai-use-chat-api t)
+(setq gpt-openai-org "org-5p...Y")  ;; NOT SET
 (setq gpt-openai-max-tokens 2000)
 (setq gpt-openai-temperature 0)
 ```

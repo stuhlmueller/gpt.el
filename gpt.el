@@ -13,18 +13,16 @@
 ;;; Commentary:
 
 ;; This package defines a set of functions and variables for running
-;; instruction-following language models like GPT-3.  It allows the
-;; user to enter a command with history and completion, and optionally
-;; use the current region as input.  The output of the command is
-;; displayed in a temporary buffer with the same major mode as the
-;; original buffer.  The output is streamed as it is produced by the
-;; GPT process.  The user can enter a follow-up command in the output
-;; buffer, which will provide the output, the follow-up command to GPT
-;; as a new prompt.  The follow-up output will be appended to the
-;; output buffer.  The user can view and export the command history to
-;; a file.
-
-
+;; instruction-following language models like ChatGPT and GPT-4.  It
+;; allows the user to enter a command with history and completion, and
+;; optionally use the current region as input.  The output of the
+;; command is displayed in a temporary buffer with the same major mode
+;; as the original buffer.  The output is streamed as it is produced
+;; by the GPT process.  The user can enter a follow-up command in the
+;; output buffer, which will provide the output, the follow-up command
+;; to GPT as a new prompt.  The follow-up output will be appended to
+;; the output buffer.  The user can view and export the command
+;; history to a file.
 
 ;;; Code:
 
@@ -38,7 +36,7 @@
 (defvar gpt-script-path (expand-file-name "gpt.py" (file-name-directory (or load-file-name buffer-file-name)))
   "The path to the Python script used by gpt.el.")
 
-(defvar gpt-openai-engine "text-davinci-003"
+(defvar gpt-openai-engine "gpt-4"
   "The OpenAI engine to use.")
 
 (defvar gpt-openai-max-tokens "2000"
@@ -49,6 +47,9 @@
 
 (defvar gpt-openai-key "NOT SET"
   "The OpenAI API key to use.")
+
+(defvar gpt-openai-use-chat-api t
+  "If non-nil, use the chat completion API.  Otherwise, use the prompt completion API.")
 
 (add-to-list 'savehist-additional-variables 'gpt-command-history)
 
@@ -89,30 +90,37 @@ have the same meaning as for `completing-read'."
         ""
       (string-trim cmd))))
 
-(defun gpt-run-command (command input output-buffer)
-  "Run GPT command on input and append output stream to output-buffer."
-  (with-current-buffer output-buffer
-    (insert (format "User: %s\n\nAssistant: " command))
+(defun gpt-run-buffer (buffer)
+  "Run GPT command with BUFFER text as input and append output stream to output-buffer."
+  (with-current-buffer buffer
     (goto-char (point-max))
     (font-lock-fontify-buffer)
-    (let* ((prompt-file (gpt-create-prompt-file input command))
-           (process (gpt-start-process prompt-file output-buffer))
+    (let* ((prompt-file (gpt-create-prompt-file buffer))
+           (process (gpt-start-process prompt-file buffer))
            (timer (gpt-start-timer process)))
       (gpt-set-process-sentinel process timer prompt-file)
-      (message "GPT: Running command..."))))
+      (message "GPT: Running command...")
+      (font-lock-fontify-buffer))))
+
+(defun gpt-insert-command (command)
+  "Insert COMMAND to GPT in chat format into the current buffer."
+  (let ((template (if gpt-openai-use-chat-api "User: %s\n\n" "User: %s\n\nAssistant:")))
+    (insert (format template command))))
 
 (defun gpt-dwim ()
   "Run user-provided GPT command on region and print output stream."
   (interactive)
   (let* ((initial-buffer (current-buffer))
          (command (gpt-read-command))
-         (output-buffer (gpt-create-output-buffer initial-buffer)))
-    (gpt-run-command command
-                     (if (use-region-p)
-                         (buffer-substring-no-properties (region-beginning) (region-end))
-                       "")
-                     output-buffer)
-    (switch-to-buffer-other-window output-buffer)))
+         (output-buffer (gpt-create-output-buffer))
+         (input (if (use-region-p)
+                    (buffer-substring-no-properties (region-beginning) (region-end))
+                  nil)))
+    (switch-to-buffer-other-window output-buffer)
+    (when input
+      (insert (format "User:\n\n```\n%s\n```\n\n" input)))
+    (gpt-insert-command command)
+    (gpt-run-buffer output-buffer)))
 
 (defun gpt-follow-up ()
   "Run a follow-up GPT command on the output buffer and append the output stream."
@@ -121,30 +129,29 @@ have the same meaning as for `completing-read'."
     (user-error "Not in a gpt output buffer"))
   (let ((command (gpt-read-command)))
     (insert "\n\n")
-    (gpt-run-command command (buffer-string) (current-buffer))))
+    (gpt-insert-command command)
+    (gpt-run-buffer (current-buffer))))
 
-(defun gpt-make-prompt (input command)
-  "Create the prompt string from INPUT text and COMMAND."
-  (cond ((and (string= input "") (string= command "")) "")
-        ((string= input "") command)
-        ((string= command "") input)
-        (t (concat "\"\"\"\n" input "\n\"\"\"\n\n" command))))
+(defun gpt-buffer-string (buffer)
+  "Get BUFFER text as string."
+  (with-current-buffer buffer
+    (buffer-string)))
 
-(defun gpt-create-prompt-file (input command)
-  "Create a temporary file containing the prompt string from INPUT text and COMMAND."
+(defun gpt-create-prompt-file (buffer)
+  "Create a temporary file containing the prompt string from BUFFER text."
   (let ((temp-file (make-temp-file "gpt-prompt")))
     (with-temp-file temp-file
-      (insert (gpt-make-prompt input command)))
+      (insert (gpt-buffer-string buffer)))
     (message "GPT: Prompt written to %s" temp-file)
     temp-file))
 
 (defun gpt-start-process (prompt-file output-buffer)
   "Start the GPT process with the given PROMPT-FILE and OUTPUT-BUFFER.
 Use `gpt-script-path' as the executable and pass the other arguments as a list."
-  (let ((process (start-process "gpt-process" output-buffer "python" gpt-script-path gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature prompt-file)))
+  (let ((process (start-process "gpt-process" output-buffer "python" gpt-script-path gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature (if gpt-openai-use-chat-api "chat" "prompt") prompt-file)))
     process))
 
-(defun gpt-create-output-buffer (initial-buffer)
+(defun gpt-create-output-buffer ()
   "Create a temporary buffer to capture the output of the GPT process.
 Use the `gpt-mode' for the output buffer."
   (let ((output-buffer (generate-new-buffer " *gpt*")))
@@ -157,6 +164,7 @@ Use the `gpt-mode' for the output buffer."
   (run-with-timer 1 1
                   (lambda (timer-object)
                     (when (process-live-p timer-object)
+                      (font-lock-fontify-buffer)
                       (message "GPT: Running...")))
                   process))
 
@@ -192,7 +200,9 @@ PROMPT-FILE is the temporary file containing the prompt."
      (2 'gpt-input-face))
     ("^\\(Assistant:\\s-*\\)\\(.*\\)$"
      (1 '(face nil invisible gpt-prefix))
-     (2 'gpt-output-face))))
+     (2 'gpt-output-face))
+    ("```\\([\0-\377[:nonascii:]]*?\\)```"  ; match code snippets enclosed in backticks
+     (1 'font-lock-constant-face))))
 
 (define-derived-mode gpt-mode text-mode "GPT"
   "A mode for displaying the output of GPT commands."
