@@ -8,7 +8,7 @@ import sys
 import os
 import argparse
 import re
-
+from litellm import completion, model_list
 from pathlib import Path
 
 try:
@@ -73,7 +73,7 @@ def stream_completions(
 
 
 def stream_chat_completions(
-    prompt: str, api_key: str, model: str, max_tokens: str, temperature: str
+    prompt: str, api_key: str, model: str, max_tokens: str, temperature: str,
 ) -> openai.Completion:
     """Stream chat completions from the openai API."""
     if api_key == "NOT SET":
@@ -95,13 +95,22 @@ def stream_chat_completions(
         messages.append({"role": role, "content": content})
 
     try:
-        return openai.ChatCompletion.create(
-            model=model,
-            messages=messages,
-            max_tokens=int(max_tokens),
-            temperature=float(temperature),
-            stream=True,
-        )
+        if "gpt" in model: 
+            return openai.ChatCompletion.create(
+                model=model,
+                messages=messages,
+                max_tokens=int(max_tokens),
+                temperature=float(temperature),
+                stream=True,
+            )
+        elif model in model_list:
+            return completion(
+                model=model,
+                messages=messages,
+                max_tokens=int(max_tokens),
+                temperature=float(temperature),
+                stream=True
+            )
     except openai.error.APIError as error:
         print(f"Error: {error}")
         sys.exit(1)
