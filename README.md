@@ -4,7 +4,7 @@
 
 # gpt.el
 
-gpt.el is a simple Emacs package that lets you interact with instruction-following language models like ChatGPT and GPT-4 from your editor. You can type a natural language command (with history and completion support) and optionally use the current region as input for the model. The package displays the output of the model in a temporary buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse and save the command history to a file for later reference.
+gpt.el is a simple Emacs package that lets you interact with instruction-following language models like ChatGPT and GPT-4 from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or all visible buffers as input for the model. The package displays the output of the model in a temporary buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
 
 ## Installation
 
@@ -90,13 +90,23 @@ Write a haiku about Emacs.
 
 If you have an active region, it will be used as contextual input to the command. If you enter n/a as the command, only the region will be passed to the model. The output of GPT running the command will be displayed in a temporary buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the generative model. You can switch back to the original buffer at any time.
 
+If you want to use all visible buffers as input, use the `gpt-dwim-all-buffers` function. You can bind it to a key of your choice, for example:
+
+```elisp
+(global-set-key (kbd "M-C-b") 'gpt-dwim-all-buffers)
+```
+
 ### Follow-up commands
 
 In the gpt-output buffer, `C-c C-c` is bound to running a follow-up command that is provided the previous commands and outputs as input. For example, you can run a command "Explain this in more detail" to get more information about the previous response.
 
 ### History
 
-You can view the command history by calling `gpt-display-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name.
+You can view the command history by calling `gpt-display-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name. To clear the command history, use the `gpt-clear-command-history` function.
+
+### Copying code blocks
+
+In the gpt-output buffer, `C-c C-b` is bound to copying the content of the code block at point to the clipboard.
 
 ## License
 

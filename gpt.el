@@ -31,7 +31,7 @@
 (savehist-mode 1)
 
 (defvar gpt-command-history nil
-  "A list of commands that have been entered by the user for `gpt-on-region'.")
+  "A list of GPT commands that have been entered by the user.")
 
 (defvar gpt-script-path (expand-file-name "gpt.py" (file-name-directory (or load-file-name buffer-file-name)))
   "The path to the Python script used by gpt.el.")
@@ -60,6 +60,12 @@
     (erase-buffer)
     (insert (mapconcat #'identity gpt-command-history "\n"))
     (switch-to-buffer (current-buffer))))
+
+(defun gpt-clear-command-history ()
+  "Clear the `gpt-command-history' list."
+  (interactive)
+  (setq gpt-command-history nil)
+  (message "GPT command history cleared."))
 
 (defun gpt-export-history (file)
   "Export the `gpt-command-history' to FILE."
@@ -107,20 +113,40 @@ have the same meaning as for `completing-read'."
   (let ((template (if gpt-openai-use-chat-api "User: %s\n\n" "User: %s\n\nAssistant:")))
     (insert (format template command))))
 
-(defun gpt-dwim ()
-  "Run user-provided GPT command on region and print output stream."
-  (interactive)
+(defun gpt-get-visible-buffers-content ()
+  "Get the content, buffer name, and file name (if available) of all currently visible buffers."
+  (let ((visible-buffers (mapcar 'window-buffer (window-list)))
+        contents)
+    (dolist (buffer visible-buffers contents)
+      (with-current-buffer buffer
+        (push (format "Buffer Name: %s\nFile Name: %s\nContent:\n%s"
+                      (buffer-name)
+                      (or (buffer-file-name) "N/A")
+                      (buffer-substring-no-properties (point-min) (point-max)))
+              contents)))
+    (mapconcat 'identity (nreverse contents) "\n\n")))
+
+(defun gpt-dwim (&optional all-buffers)
+  "Run user-provided GPT command on region or all visible buffers and print output stream.
+If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible buffers as input. Otherwise, use the current region."
+  (interactive "P")
   (let* ((initial-buffer (current-buffer))
          (command (gpt-read-command))
          (output-buffer (gpt-create-output-buffer))
-         (input (if (use-region-p)
-                    (buffer-substring-no-properties (region-beginning) (region-end))
-                  nil)))
+         (input (if all-buffers
+                    (gpt-get-visible-buffers-content)
+                  (when (use-region-p)
+                    (buffer-substring-no-properties (region-beginning) (region-end))))))
     (switch-to-buffer-other-window output-buffer)
     (when input
       (insert (format "User:\n\n```\n%s\n```\n\n" input)))
     (gpt-insert-command command)
     (gpt-run-buffer output-buffer)))
+
+(defun gpt-dwim-all-buffers ()
+  "Run user-provided GPT command on all visible buffers and print output stream."
+  (interactive)
+  (gpt-dwim t))
 
 (defun gpt-follow-up ()
   "Run a follow-up GPT command on the output buffer and append the output stream."
@@ -222,8 +248,24 @@ PROMPT-FILE is the temporary file containing the prompt."
     (add-to-invisibility-spec 'gpt-prefix))
   (font-lock-fontify-buffer))
 
+(defun gpt-copy-code-block ()
+  "Copy the content of the code block at point to the clipboard."
+  (interactive)
+  (let* ((start (if (search-backward "\n```" nil t) (point) nil))
+         (_ (goto-char (or (+ start 3) (point-min))))
+         (end (if (search-forward "\n```" nil t) (point) nil)))
+    (when (and start end)
+      (let* ((content (buffer-substring-no-properties (+ start 3) (- end 3)))
+             (lang-end (string-match "\n" content))
+             (code (if lang-end
+                       (substring content (+ lang-end 1))
+                     content)))
+        (kill-new code)
+        (message "Code block copied to clipboard.")))))
+
 (define-key gpt-mode-map (kbd "C-c C-c") 'gpt-follow-up)
 (define-key gpt-mode-map (kbd "C-c C-p") 'gpt-toggle-prefix)
+(define-key gpt-mode-map (kbd "C-c C-b") 'gpt-copy-code-block)
 
 (provide 'gpt)
 
