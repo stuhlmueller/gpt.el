@@ -50,7 +50,7 @@ def read_input_text() -> str:
 
 def stream_completions(
     prompt: str, api_key: str, engine: str, max_tokens: str, temperature: str
-) -> openai.Completion:
+) -> openai.completions:
     """Stream completions from the openai API."""
     if api_key == "NOT SET":
         print("Error: API key not set.")
@@ -60,21 +60,21 @@ def stream_completions(
         sys.exit(1)
     openai.api_key = api_key
     try:
-        return openai.Completion.create(
+        return openai.completions.create(
             engine=engine,
             prompt=prompt,
             max_tokens=int(max_tokens),
             temperature=float(temperature),
             stream=True,
         )
-    except openai.error.APIError as error:
+    except openai.APIError as error:
         print(f"Error: {error}")
         sys.exit(1)
 
 
 def stream_chat_completions(
     prompt: str, api_key: str, model: str, max_tokens: str, temperature: str
-) -> openai.Completion:
+) -> openai.completions:
     """Stream chat completions from the openai API."""
     if api_key == "NOT SET":
         print("Error: API key not set.")
@@ -95,19 +95,19 @@ def stream_chat_completions(
         messages.append({"role": role, "content": content})
 
     try:
-        return openai.ChatCompletion.create(
+        return openai.chat.completions.create(
             model=model,
             messages=messages,
             max_tokens=int(max_tokens),
             temperature=float(temperature),
             stream=True,
         )
-    except openai.error.APIError as error:
+    except openai.APIError as error:
         print(f"Error: {error}")
         sys.exit(1)
 
 
-def print_and_collect_completions(stream: openai.Completion) -> str:
+def print_and_collect_completions(stream: openai.completions) -> str:
     """Print and collect completions from the stream."""
     completion_text = ""
     for i, completion in enumerate(stream):
@@ -119,12 +119,12 @@ def print_and_collect_completions(stream: openai.Completion) -> str:
         elif hasattr(choice, "delta"):
             delta = choice.delta
             this_text = ""
-            if hasattr(delta, "role"):
+            if hasattr(delta, "role") and delta.role is not None:
                 if delta.role == "system":
                     continue
                 role_str = f"{delta.role.capitalize()}: "
                 this_text += role_str
-            if hasattr(delta, "content"):
+            if hasattr(delta, "content") and delta.content is not None:
                 this_text += delta.content
         else:
             raise ValueError(f"Unknown completion type: {choice}")
