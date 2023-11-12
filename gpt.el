@@ -51,6 +51,9 @@
 (defvar gpt-openai-use-chat-api t
   "If non-nil, use the chat completion API.  Otherwise, use the prompt completion API.")
 
+(defvar gpt-python-path "python"
+  "The path to your python executable.")
+
 (add-to-list 'savehist-additional-variables 'gpt-command-history)
 
 (defun gpt-display-command-history ()
@@ -174,7 +177,7 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
 (defun gpt-start-process (prompt-file output-buffer)
   "Start the GPT process with the given PROMPT-FILE and OUTPUT-BUFFER.
 Use `gpt-script-path' as the executable and pass the other arguments as a list."
-  (let ((process (start-process "gpt-process" output-buffer "python" gpt-script-path gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature (if gpt-openai-use-chat-api "chat" "prompt") prompt-file)))
+  (let ((process (start-process "gpt-process" output-buffer gpt-python-path gpt-script-path gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature (if gpt-openai-use-chat-api "chat" "prompt") prompt-file)))
     process))
 
 (defun gpt-create-output-buffer ()
