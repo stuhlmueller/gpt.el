@@ -3,8 +3,8 @@
 ;; Copyright (C) 2022 Andreas Stuhlmueller
 
 ;; Author: Andreas Stuhlmueller <andreas@ought.org>
-;; Version: 1.0
-;; Keywords: gpt3, language, copilot, convenience, tools
+;; Version: 1.1
+;; Keywords: openai, anthropic, claude, language, copilot, convenience, tools
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
@@ -13,18 +13,16 @@
 ;;; Commentary:
 
 ;; This package defines a set of functions and variables for running
-;; instruction-following language models like ChatGPT and GPT-4.  It
-;; allows the user to enter a command with history and completion, and
-;; optionally use the current region as input.  The output of the
-;; command is displayed in a temporary buffer with the same major mode
-;; as the original buffer.  The output is streamed as it is produced
-;; by the GPT process.  The user can enter a follow-up command in the
-;; output buffer, which will provide the output, the follow-up command
-;; to GPT as a new prompt.  The follow-up output will be appended to
-;; the output buffer.  The user can view and export the command
-;; history to a file.
-
-;;; Code:
+;; instruction-following language models like GPT-4 and Claude 3.5
+;; Sonnet.  It allows the user to enter a command with history and
+;; completion, and optionally use the current region as input.  The
+;; output of the command is displayed in a temporary buffer with the
+;; same major mode as the original buffer.  The output is streamed as
+;; it is produced by the GPT process.  The user can enter a follow-up
+;; command in the output buffer, which will provide the output, the
+;; follow-up command to GPT as a new prompt.  The follow-up output
+;; will be appended to the output buffer.  The user can view and
+;; export the command history to a file.
 
 (require 'savehist)
 
@@ -36,20 +34,23 @@
 (defvar gpt-script-path (expand-file-name "gpt.py" (file-name-directory (or load-file-name buffer-file-name)))
   "The path to the Python script used by gpt.el.")
 
-(defvar gpt-openai-engine "gpt-4"
-  "The OpenAI engine to use.")
+(defvar gpt-model "gpt-4o"
+  "The model to use (e.g., 'gpt-4', 'claude-3-5-sonnet-20240620').")
 
-(defvar gpt-openai-max-tokens "2000"
-  "The max_tokens value used with OpenAI engine.")
+(defvar gpt-max-tokens "2000"
+  "The max_tokens value used with the chosen model.")
 
-(defvar gpt-openai-temperature "0"
-  "The temperature value used with OpenAI completion engine.")
+(defvar gpt-temperature "0"
+  "The temperature value used with the chosen model.")
 
 (defvar gpt-openai-key "NOT SET"
   "The OpenAI API key to use.")
 
-(defvar gpt-openai-use-chat-api t
-  "If non-nil, use the chat completion API.  Otherwise, use the prompt completion API.")
+(defvar gpt-anthropic-key "NOT SET"
+  "The Anthropic API key to use.")
+
+(defvar gpt-api-type 'openai
+  "The type of API to use. Either 'openai or 'anthropic.")
 
 (defvar gpt-python-path "python"
   "The path to your python executable.")
@@ -113,7 +114,7 @@ have the same meaning as for `completing-read'."
 
 (defun gpt-insert-command (command)
   "Insert COMMAND to GPT in chat format into the current buffer."
-  (let ((template (if gpt-openai-use-chat-api "User: %s\n\n" "User: %s\n\nAssistant:")))
+  (let ((template "User: %s\n\nAssistant: "))
     (insert (format template command))))
 
 (defun gpt-get-visible-buffers-content ()
@@ -177,7 +178,12 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
 (defun gpt-start-process (prompt-file output-buffer)
   "Start the GPT process with the given PROMPT-FILE and OUTPUT-BUFFER.
 Use `gpt-script-path' as the executable and pass the other arguments as a list."
-  (let ((process (start-process "gpt-process" output-buffer gpt-python-path gpt-script-path gpt-openai-key gpt-openai-engine gpt-openai-max-tokens gpt-openai-temperature (if gpt-openai-use-chat-api "chat" "prompt") prompt-file)))
+  (let* ((api-key (if (eq gpt-api-type 'openai) gpt-openai-key gpt-anthropic-key))
+         (api-type-str (symbol-name gpt-api-type))
+         (process (start-process "gpt-process" output-buffer 
+                                 gpt-python-path gpt-script-path 
+                                 api-key gpt-model gpt-max-tokens gpt-temperature 
+                                 api-type-str prompt-file)))
     process))
 
 (defun gpt-create-output-buffer ()
@@ -224,7 +230,7 @@ PROMPT-FILE is the temporary file containing the prompt."
   "Face for the output of the GPT commands.")
 
 (defvar gpt-font-lock-keywords
-  '(("^\\(User:\\s-*\\)\\(.*\\)$"
+  '(("^\\(User:\\|Human:\\s-*\\)\\(.*\\)$"
      (1 '(face nil invisible gpt-prefix))
      (2 'gpt-input-face))
     ("^\\(Assistant:\\s-*\\)\\(.*\\)$"
@@ -247,7 +253,7 @@ PROMPT-FILE is the temporary file containing the prompt."
   (interactive)
   (if (and (listp buffer-invisibility-spec)
            (memq 'gpt-prefix buffer-invisibility-spec))
-        (remove-from-invisibility-spec 'gpt-prefix)
+      (remove-from-invisibility-spec 'gpt-prefix)
     (add-to-invisibility-spec 'gpt-prefix))
   (font-lock-fontify-buffer))
 
@@ -266,9 +272,21 @@ PROMPT-FILE is the temporary file containing the prompt."
         (kill-new code)
         (message "Code block copied to clipboard.")))))
 
+(defun gpt-switch-model ()
+  "Switch between OpenAI and Anthropic models."
+  (interactive)
+  (let* ((models '(("GPT-4o" . (openai . "gpt-4o"))
+                   ("Claude 3.5 Sonnet" . (anthropic . "claude-3-5-sonnet-20240620"))))
+         (choice (completing-read "Choose model: " (mapcar #'car models) nil t))
+         (model-info (cdr (assoc choice models))))
+    (setq gpt-api-type (car model-info)
+          gpt-model (cdr model-info))
+    (message "Switched to %s model: %s" (car model-info) (cdr model-info))))
+
 (define-key gpt-mode-map (kbd "C-c C-c") 'gpt-follow-up)
 (define-key gpt-mode-map (kbd "C-c C-p") 'gpt-toggle-prefix)
 (define-key gpt-mode-map (kbd "C-c C-b") 'gpt-copy-code-block)
+(define-key gpt-mode-map (kbd "C-c C-m") 'gpt-switch-model)
 
 (provide 'gpt)
 

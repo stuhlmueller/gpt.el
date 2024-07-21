@@ -8,81 +8,59 @@ import sys
 import os
 import argparse
 import re
-
 from pathlib import Path
+from typing import Union
+
+APIType = Union["openai", "anthropic"]
+
+openai = None
+anthropic = None
 
 try:
     import openai
 except ImportError:
-    print("gpt.el requires the OpenAI Python package.")
-    print("Please install, for example by running `pip install openai'.")
-    sys.exit(1)
+    pass
+
+try:
+    import anthropic
+except ImportError:
+    pass
 
 try:
     import jsonlines
 except ImportError:
     jsonlines = None
 
-
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("api_key", help="The API key to use for the OpenAI API.")
-    parser.add_argument("engine", help="The engine to use for the OpenAI API.")
-    parser.add_argument(
-        "max_tokens", help="Max tokens value to be used with the OpenAI API.."
-    )
-    parser.add_argument(
-        "temperature", help="Temperature value to be used with the OpenAI API.."
-    )
-    parser.add_argument("api_type", help="The type of API to use: 'chat' or 'prompt'.")
+    parser.add_argument("api_key", help="The API key to use for the selected API.")
+    parser.add_argument("model", help="The model to use (e.g., 'gpt-4', 'claude-3-sonnet-20240229').")
+    parser.add_argument("max_tokens", help="Max tokens value to be used with the API.")
+    parser.add_argument("temperature", help="Temperature value to be used with the API.")
+    parser.add_argument("api_type", type=str, choices=("openai", "anthropic"), help="The type of API to use: 'openai' or 'anthropic'.")
     parser.add_argument("prompt_file", help="The file that contains the prompt.")
     return parser.parse_args()
 
-
 def read_input_text() -> str:
     """Read input text from stdin."""
-    lines = []
-    for line in sys.stdin.readlines():
-        lines.append(line)
-    return "".join(lines)
+    return sys.stdin.read()
 
-
-def stream_completions(
-    prompt: str, api_key: str, engine: str, max_tokens: str, temperature: str
-) -> openai.completions:
-    """Stream completions from the openai API."""
-    if api_key == "NOT SET":
-        print("Error: API key not set.")
-        print(
-            'Add (setq gpt-openai-key "sk-Aes.....AV8qzL") to your Emacs init.el file.'
-        )
-        sys.exit(1)
-    openai.api_key = api_key
-    try:
-        return openai.completions.create(
-            engine=engine,
-            prompt=prompt,
-            max_tokens=int(max_tokens),
-            temperature=float(temperature),
-            stream=True,
-        )
-    except openai.APIError as error:
-        print(f"Error: {error}")
-        sys.exit(1)
-
-
-def stream_chat_completions(
+def stream_openai_chat_completions(
     prompt: str, api_key: str, model: str, max_tokens: str, temperature: str
-) -> openai.completions:
-    """Stream chat completions from the openai API."""
-    if api_key == "NOT SET":
-        print("Error: API key not set.")
-        print(
-            'Add (setq gpt-openai-key "sk-Aes.....AV8qzL") to your Emacs init.el file.'
-        )
+) -> openai.Stream:
+    """Stream chat completions from the OpenAI API."""
+    if openai is None:
+        print("Error: OpenAI Python package is not installed.")
+        print("Please install by running `pip install openai'.")
         sys.exit(1)
-    openai.api_key = api_key
+
+    if api_key == "NOT SET":
+        print("Error: OpenAI API key not set.")
+        print('Add (setq gpt-openai-key "sk-Aes.....AV8qzL") to your Emacs init.el file.')
+        sys.exit(1)
+    
+    client = openai.OpenAI(api_key=api_key)
 
     messages = [{"role": "system", "content": "You are a helpful assistant."}]
     pattern = re.compile(
@@ -95,7 +73,7 @@ def stream_chat_completions(
         messages.append({"role": role, "content": content})
 
     try:
-        return openai.chat.completions.create(
+        return client.chat.completions.create(
             model=model,
             messages=messages,
             max_tokens=int(max_tokens),
@@ -106,38 +84,83 @@ def stream_chat_completions(
         print(f"Error: {error}")
         sys.exit(1)
 
+def stream_anthropic_chat_completions(
+    prompt: str, api_key: str, model: str, max_tokens: str, temperature: str
+) -> anthropic.Anthropic:
+    """Stream chat completions from the Anthropic API."""
+    if anthropic is None:
+        print("Error: Anthropic Python package is not installed.")
+        print("Please install by running `pip install anthropic'.")
+        sys.exit(1)
 
-def print_and_collect_completions(stream: openai.completions) -> str:
+    if api_key == "NOT SET":
+        print("Error: Anthropic API key not set.")
+        print('Add (setq gpt-anthropic-key "sk-ant-api03-...") to your Emacs init.el file.')
+        sys.exit(1)
+    
+    client = anthropic.Anthropic(api_key=api_key)
+
+    messages = []
+    pattern = re.compile(
+        r"^(User|Assistant):(.+?)(?=\n(?:User|Assistant):|\Z)", re.MULTILINE | re.DOTALL
+    )
+    matches = pattern.finditer(prompt)
+
+    # Anthropic requires alternating user and assistant messages,
+    # so we group user messages together
+    current_user_message = None
+
+    for match in matches:
+        role = "user" if match.group(1).lower() == "user" else "assistant"
+        content = match.group(2).strip()
+        
+        if role == "user":
+            if current_user_message is None:
+                current_user_message = content
+            else:
+                current_user_message += "\n\n" + content
+        else:
+            if current_user_message is not None:
+                messages.append({"role": "user", "content": current_user_message})
+                current_user_message = None
+            messages.append({"role": "assistant", "content": content})
+    
+    if current_user_message is not None:
+        messages.append({"role": "user", "content": current_user_message})
+
+    try:
+        return client.messages.create(
+            model=model,
+            messages=messages,
+            max_tokens=int(max_tokens),
+            temperature=float(temperature),
+            stream=True,
+        )
+    except anthropic.APIError as error:
+        print(f"Error: {error}")
+
+        sys.exit(1)
+
+def print_and_collect_completions(stream, api_type: APIType) -> str:
     """Print and collect completions from the stream."""
     completion_text = ""
-    for i, completion in enumerate(stream):
-        choice = completion.choices[0]
-        if hasattr(choice, "text"):
-            this_text = choice.text
-        elif hasattr(choice, "message"):
-            this_text = choice.message
-        elif hasattr(choice, "delta"):
-            delta = choice.delta
-            this_text = ""
-            if hasattr(delta, "role") and delta.role is not None:
-                if delta.role == "system":
-                    continue
-                role_str = f"{delta.role.capitalize()}: "
-                this_text += role_str
-            if hasattr(delta, "content") and delta.content is not None:
-                this_text += delta.content
-        else:
-            raise ValueError(f"Unknown completion type: {choice}")
-
-        completion_text += this_text
-
-        if i == 0:
-            this_text = this_text.lstrip("\n")
-
-        print(this_text, end="", flush=True)
+    
+    if api_type == "openai":
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                text = chunk.choices[0].delta.content
+                print(text, end="", flush=True)
+                completion_text += text
+    elif api_type == "anthropic":
+        for chunk in stream:
+            if chunk.type == "content_block_delta":
+                text = chunk.delta.text
+                print(text, end="", flush=True)
+                completion_text += text
+    else:
+        raise ValueError(f"Unsupported API type '{api_type}'")
 
     return completion_text
-
 
 def write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
     """Write the prompt and completion to a jsonl file."""
@@ -153,27 +176,30 @@ def write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
         print(f"Error: {error}")
         sys.exit(1)
 
-
 def main() -> None:
     """
     Main function to read a prompt from a file, generate completions
-    using OpenAI API, and save the completions to a JSONL file.
+    using the specified API, and save the completions to a JSONL file.
     """
     args = parse_args()
     with open(args.prompt_file, "r") as prompt_file:
         prompt = prompt_file.read()
-    if args.api_type == "chat":
-        stream = stream_chat_completions(
-            prompt, args.api_key, args.engine, args.max_tokens, args.temperature
+    
+    if args.api_type == "openai":
+        stream = stream_openai_chat_completions(
+            prompt, args.api_key, args.model, args.max_tokens, args.temperature
+        )
+    elif args.api_type == "anthropic":
+        stream = stream_anthropic_chat_completions(
+            prompt, args.api_key, args.model, args.max_tokens, args.temperature
         )
     else:
-        stream = stream_completions(
-            prompt, args.api_key, args.engine, args.max_tokens, args.temperature
-        )
-    completion_text = print_and_collect_completions(stream)
+        print(f"Error: Unsupported API type '{args.api_type}'")
+        sys.exit(1)
+    
+    completion_text = print_and_collect_completions(stream, args.api_type)
     file_name = Path.home() / ".emacs_prompts_completions.jsonl"
     write_to_jsonl(prompt, completion_text, file_name)
-
 
 if __name__ == "__main__":
     main()

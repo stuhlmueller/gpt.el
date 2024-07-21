@@ -4,11 +4,17 @@
 
 # gpt.el
 
-gpt.el is a simple Emacs package that lets you interact with instruction-following language models like ChatGPT and GPT-4 from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or all visible buffers as input for the model. The package displays the output of the model in a temporary buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
+gpt.el is a simple Emacs package that lets you interact with instruction-following language models like GPT-4 and Claude 3.5 Sonnet from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or all visible buffers as input for the model. The package displays the output of the model in a temporary buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
 
 ## Installation
 
-To use gpt.el, you need to have the `openai` Python package installed and a valid OpenAI API key. You can install the package with `pip install openai`, and get an API key from https://beta.openai.com/.
+To use gpt.el, you need to have at least one of the `openai` and `anthropic` Python packges as well as `jsonlines`. You'll also need valid API keys for OpenAI or Anthropic. You can install the packages with:
+
+```
+pip install openai anthropic jsonlines
+```
+
+You can get an OpenAI API key from https://beta.openai.com/ and an Anthropic API key from https://console.anthropic.com.
 
 ### From MELPA package repository
 
@@ -56,20 +62,25 @@ Alternatively, you can use `use-package`:
 
 ## Configuration
 
-You need to set the variable `gpt-openai-key` to your OpenAI API key use gpt.el. For example:
+You need to set the variables `gpt-openai-key` and/or `gpt-anthropic-key` to your respective API keys to use gpt.el. For example:
 
 ```elisp
 (setq gpt-openai-key "sk-Aes.....AV8qzL")
+(setq gpt-anthropic-key "sk-ant-api03-...")
 ```
 
-Optionally, you can customize the engine parameters by setting the variables `gpt-openai-engine`, `gpt-openai-use-chat-api`, `gpt-openai-org`, `gpt-openai-max-tokens`, and `gpt-openai-temperature`. The defaults are:
+Optionally, you can customize the model parameters by setting the variables `gpt-model`, `gpt-max-tokens`, and `gpt-temperature`. The defaults are:
 
 ```elisp
-(setq gpt-openai-engine "gpt-4")
-(setq gpt-openai-use-chat-api t)
-(setq gpt-openai-org "org-5p...Y")  ;; NOT SET
-(setq gpt-openai-max-tokens 2000)
-(setq gpt-openai-temperature 0)
+(setq gpt-model "gpt-4o")
+(setq gpt-max-tokens 2000)
+(setq gpt-temperature 0)
+```
+
+By default, gpt.el uses the OpenAI API. To switch to the Anthropic API, you can set:
+
+```elisp
+(setq gpt-api-type 'anthropic)
 ```
 
 ## Usage
@@ -88,7 +99,7 @@ When you invoke `gpt-dwim`, you will be prompted for a command, with history and
 Write a haiku about Emacs.
 ```
 
-If you have an active region, it will be used as contextual input to the command. If you enter n/a as the command, only the region will be passed to the model. The output of GPT running the command will be displayed in a temporary buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the generative model. You can switch back to the original buffer at any time.
+If you have an active region, it will be used as contextual input to the command. If you enter n/a as the command, only the region will be passed to the model. The output of the model running the command will be displayed in a temporary buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the generative model. You can switch back to the original buffer at any time.
 
 If you want to use all visible buffers as input, use the `gpt-dwim-all-buffers` function. You can bind it to a key of your choice, for example:
 
@@ -100,13 +111,25 @@ If you want to use all visible buffers as input, use the `gpt-dwim-all-buffers` 
 
 In the gpt-output buffer, `C-c C-c` is bound to running a follow-up command that is provided the previous commands and outputs as input. For example, you can run a command "Explain this in more detail" to get more information about the previous response.
 
+### Copying code blocks
+
+In the gpt-output buffer, `C-c C-b` is bound to copying the content of the code block at point to the clipboard.
+
+### Toggling prefix visibility
+
+In the gpt-output buffer, `C-c C-p` is bound to toggling the visibility of the "User:", "Human:", and "Assistant:" prefixes.
+
+### Switching models
+
+You can switch between different models (GPT-4, GPT-3.5-turbo, and Claude 3 Sonnet) using the `gpt-switch-model` function. In the gpt-output buffer, `C-c C-m` is bound to this function. When called, it will prompt you to choose a model from the available options.
+
 ### History
 
 You can view the command history by calling `gpt-display-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name. To clear the command history, use the `gpt-clear-command-history` function.
 
-### Copying code blocks
+## Contributing
 
-In the gpt-output buffer, `C-c C-b` is bound to copying the content of the code block at point to the clipboard.
+Contributions to gpt.el are welcome! Please feel free to submit pull requests or create issues for bugs and feature requests.
 
 ## License
 
