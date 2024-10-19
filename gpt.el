@@ -55,6 +55,9 @@
 (defvar gpt-python-path "python"
   "The path to your python executable.")
 
+(defvar gpt-use-named-buffers t
+  "If non-nil, use named buffers for GPT output. Otherwise, use temporary buffers.")
+
 (add-to-list 'savehist-additional-variables 'gpt-command-history)
 
 (defun gpt-display-command-history ()
@@ -136,7 +139,7 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
   (interactive "P")
   (let* ((initial-buffer (current-buffer))
          (command (gpt-read-command))
-         (output-buffer (gpt-create-output-buffer))
+         (output-buffer (gpt-create-output-buffer command))
          (input (if all-buffers
                     (gpt-get-visible-buffers-content)
                   (when (use-region-p)
@@ -186,10 +189,31 @@ Use `gpt-script-path' as the executable and pass the other arguments as a list."
                                  api-type-str prompt-file)))
     process))
 
-(defun gpt-create-output-buffer ()
-  "Create a temporary buffer to capture the output of the GPT process.
-Use the `gpt-mode' for the output buffer."
-  (let ((output-buffer (generate-new-buffer " *gpt*")))
+(defvar gpt-buffer-counter 0
+  "Counter to ensure unique buffer names for GPT output buffers.")
+
+(defvar gpt-buffer-name-length 60
+  "Maximum character length of the GPT buffer name title.")
+
+(defun gpt-get-output-buffer-name (command)
+  "Get the output buffer name for a given COMMAND."
+    ;;; e.g., "*gpt[10]:Explain gpt.el...*"
+  (concat "*gpt"
+          "[" (number-to-string gpt-buffer-counter) "]:"
+          (substring command 0 (min gpt-buffer-name-length (length command)))
+          "..."
+          "*"))
+
+(defun gpt-create-output-buffer (command)
+  "Create a buffer to capture the output of the GPT process.
+If `gpt-use-named-buffers' is non-nil, create or get a named buffer.
+Otherwise, create a temporary buffer. Use the `gpt-mode' for the output buffer."
+  (let ((output-buffer
+         (if gpt-use-named-buffers
+             (let ((buffer (get-buffer-create (gpt-get-output-buffer-name command))))
+               (setq gpt-buffer-counter (1+ gpt-buffer-counter))  ; Increment the counter
+               buffer)
+           (generate-new-buffer (gpt-get-output-buffer-name command)))))
     (with-current-buffer output-buffer
       (gpt-mode))
     output-buffer))
