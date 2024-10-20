@@ -165,6 +165,31 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
     (gpt-insert-command command)
     (gpt-run-buffer (current-buffer))))
 
+(defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the above."
+  "The instruction given to GPT to generate a buffer name.")
+
+(defun gpt-generate-buffer-name ()
+  "Update the buffer name by asking GPT to create a title for it."
+  (interactive)
+  (unless (eq major-mode 'gpt-mode)
+    (user-error "Not in a gpt output buffer"))
+  (let* ((gpt-buffer (current-buffer))
+         (buffer-string (gpt-buffer-string gpt-buffer))
+         (prompt (concat buffer-string "\n\n" gpt-generate-buffer-name-instruction)))
+    (with-temp-buffer
+      (insert prompt)
+      (let ((prompt-file (gpt-create-prompt-file (current-buffer)))
+            (api-key (if (eq gpt-api-type 'openai) gpt-openai-key gpt-anthropic-key))
+            (api-type-str (symbol-name gpt-api-type)))
+        (erase-buffer)
+        (message "Asking GPT to generate buffer name...")
+        (call-process gpt-python-path nil t nil
+                      gpt-script-path api-key gpt-model gpt-max-tokens gpt-temperature api-type-str prompt-file)
+        (let ((generated-title (string-trim (buffer-string))))
+          (with-current-buffer gpt-buffer
+            (rename-buffer (gpt-get-output-buffer-name generated-title))))))))
+
+
 (defun gpt-buffer-string (buffer)
   "Get BUFFER text as string."
   (with-current-buffer buffer
@@ -183,9 +208,9 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
 Use `gpt-script-path' as the executable and pass the other arguments as a list."
   (let* ((api-key (if (eq gpt-api-type 'openai) gpt-openai-key gpt-anthropic-key))
          (api-type-str (symbol-name gpt-api-type))
-         (process (start-process "gpt-process" output-buffer 
-                                 gpt-python-path gpt-script-path 
-                                 api-key gpt-model gpt-max-tokens gpt-temperature 
+         (process (start-process "gpt-process" output-buffer
+                                 gpt-python-path gpt-script-path
+                                 api-key gpt-model gpt-max-tokens gpt-temperature
                                  api-type-str prompt-file)))
     process))
 
@@ -197,7 +222,7 @@ Use `gpt-script-path' as the executable and pass the other arguments as a list."
 
 (defun gpt-get-output-buffer-name (command)
   "Get the output buffer name for a given COMMAND."
-    ;;; e.g., "*gpt[10]:Explain gpt.el...*"
+  ;;; e.g., "*gpt[10]:Explain gpt.el...*"
   (concat "*gpt"
           "[" (number-to-string gpt-buffer-counter) "]:"
           (substring command 0 (min gpt-buffer-name-length (length command)))
@@ -311,6 +336,7 @@ PROMPT-FILE is the temporary file containing the prompt."
 (define-key gpt-mode-map (kbd "C-c C-p") 'gpt-toggle-prefix)
 (define-key gpt-mode-map (kbd "C-c C-b") 'gpt-copy-code-block)
 (define-key gpt-mode-map (kbd "C-c C-m") 'gpt-switch-model)
+(define-key gpt-mode-map (kbd "C-c C-t") 'gpt-generate-buffer-name)
 
 (provide 'gpt)
 
