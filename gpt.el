@@ -166,7 +166,7 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
     (gpt-insert-command command)
     (gpt-run-buffer (current-buffer))))
 
-(defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the above."
+(defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the above. Say only the title, nothing else."
   "The instruction given to GPT to generate a buffer name.")
 
 (defun gpt-generate-buffer-name ()
