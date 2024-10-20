@@ -199,7 +199,7 @@ Use `gpt-script-path' as the executable and pass the other arguments as a list."
   "Get the output buffer name for a given COMMAND."
     ;;; e.g., "*gpt[10]:Explain gpt.el...*"
   (concat "*gpt"
-          "[" (number-to-string gpt-buffer-counter) "]:"
+          "[" (number-to-string gpt-buffer-counter) "]: "
           (substring command 0 (min gpt-buffer-name-length (length command)))
           "..."
           "*"))
