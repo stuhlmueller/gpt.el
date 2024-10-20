@@ -158,6 +158,7 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
   (unless (eq major-mode 'gpt-mode)
     (user-error "Not in a gpt output buffer"))
   (let ((command (gpt-read-command)))
+    (goto-char (point-max))
     (insert "\n\n")
     (gpt-insert-command command)
     (gpt-run-buffer (current-buffer))))
