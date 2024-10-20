@@ -127,6 +127,10 @@ You can switch between different models (GPT-4, GPT-3.5-turbo, and Claude 3 Sonn
 
 You can view the command history by calling `gpt-display-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name. To clear the command history, use the `gpt-clear-command-history` function.
 
+### GPT buffer names
+
+By default, the created buffer names will just be the first `gpt-buffer-name-length` characters of the original command. To have more meaningful names, you can have GPT generate it for you via `gpt-generate-buffer-name` (`C-c C-t`). Note that this call to GPT is synchronous. 
+
 ## Contributing
 
 Contributions to gpt.el are welcome! Please feel free to submit pull requests or create issues for bugs and feature requests.
