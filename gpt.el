@@ -166,7 +166,7 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
     (gpt-insert-command command)
     (gpt-run-buffer (current-buffer))))
 
-(defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the above. Say only the title, nothing else."
+(defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Say only the title, nothing else. No quotes."
   "The instruction given to GPT to generate a buffer name.")
 
 (defun gpt-generate-buffer-name ()
@@ -176,7 +176,7 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
     (user-error "Not in a gpt output buffer"))
   (let* ((gpt-buffer (current-buffer))
          (buffer-string (gpt-buffer-string gpt-buffer))
-         (prompt (concat buffer-string "\n\n" gpt-generate-buffer-name-instruction)))
+         (prompt (concat buffer-string "\n\nUser: " gpt-generate-buffer-name-instruction)))
     (with-temp-buffer
       (insert prompt)
       (let ((prompt-file (gpt-create-prompt-file (current-buffer)))
