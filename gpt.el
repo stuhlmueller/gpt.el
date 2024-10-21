@@ -211,8 +211,8 @@ Use `gpt-script-path' as the executable and pass the other arguments as a list."
          (api-type-str (symbol-name gpt-api-type))
          (process (start-process "gpt-process" output-buffer
                                  gpt-python-path gpt-script-path
-                                 api-key gpt-model gpt-max-tokens gpt-temperature
-                                 api-type-str prompt-file)))
+                                 "chat" prompt-file api-key gpt-model gpt-max-tokens gpt-temperature
+                                 api-type-str)))
     process))
 
 (defvar gpt-buffer-counter 0
@@ -352,6 +352,44 @@ PROMPT-FILE is the temporary file containing the prompt."
     (setq gpt-api-type (car model-info)
           gpt-model (cdr model-info))
     (message "Switched to %s model: %s" (car model-info) (cdr model-info))))
+
+(defface gpt-completion-preview-face
+  '((t :inherit default :underline t :weight bold))
+  "Face for previewing code completions.")
+
+
+(defun gpt-complete-at-point ()
+  "Get completion from gpt based on buffer content up to point.
+The generated completion is displayed directly in buffer and can be accepted with RET."
+  (interactive)
+  (let* ((api-key gpt-openai-key)
+         (api-key (if (eq gpt-api-type 'openai) gpt-openai-key gpt-anthropic-key))
+         (api-type-str (symbol-name gpt-api-type))
+         ;; TODO: align with process creation for gpt-run-buffer
+         (process (make-process
+                   :name "gpt-complete-at-point-process"
+                   :buffer "*GPT Complete-at-point*"
+                   :command (list gpt-python-path gpt-script-path "complete" api-key gpt-model gpt-max-tokens gpt-temperature api-type-str)
+                   :connection-type 'pipe))
+         (start-point (point))
+         (overlay (make-overlay start-point start-point))
+         (buffer-content (buffer-substring-no-properties (point-min) start-point)))
+    (overlay-put overlay 'face 'gpt-completion-preview-face)
+    (set-process-filter
+     process
+     (lambda (proc string)
+       (insert string)
+       ;; Update the overlay to cover the new text
+       (move-overlay overlay start-point (point))))
+    (process-send-string process (concat buffer-content "\n"))
+    (process-send-eof process)
+    ;; Wait for user confirmatio
+    (let ((response (read-key (format "Press RET to accept completion, any other key to cancel"))))
+      (if (eq response ?\r)
+          (delete-overlay overlay)  ; Remove overlay if accepted
+        (delete-region start-point (point))  ; Remove text if canceled
+        (delete-overlay overlay)
+        (message "Completion canceled")))))
 
 (define-key gpt-mode-map (kbd "C-c C-c") 'gpt-follow-up)
 (define-key gpt-mode-map (kbd "C-c C-p") 'gpt-toggle-prefix)
