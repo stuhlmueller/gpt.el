@@ -303,23 +303,23 @@ PROMPT-FILE is the temporary file containing the prompt."
      ;; the `define-derived-mode` macro expects a literal as its first argument
      ;; hence, we can not simply use the `parent-mode` variable
      ;; but need to use a backquoted list and eval it
-    `(define-derived-mode gpt-mode ,parent-mode "GPT"
-      "A mode for displaying the output of GPT commands."
-      (message "GPT mode intialized with parent: %s" ',parent-mode)
-      (setq-local word-wrap t)
-      (setq-local font-lock-extra-managed-props '(invisible))
-      (if (eq ',parent-mode 'markdown-mode)
+     `(define-derived-mode gpt-mode ,parent-mode "GPT"
+        "A mode for displaying the output of GPT commands."
+        (message "GPT mode intialized with parent: %s" ',parent-mode)
+        (setq-local word-wrap t)
+        (setq-local font-lock-extra-managed-props '(invisible))
+        (if (eq ',parent-mode 'markdown-mode)
+            (progn
+              (setq markdown-fontify-code-blocks-natively t)
+              ;; Combine markdown-mode's keywords with custom keywords
+              (setq font-lock-defaults
+                    (list (append markdown-mode-font-lock-keywords gpt-font-lock-keywords))))
           (progn
-            (setq markdown-fontify-code-blocks-natively t)
-            ;; Combine markdown-mode's keywords with custom keywords
-            (setq font-lock-defaults
-                  (list (append markdown-mode-font-lock-keywords gpt-font-lock-keywords))))
-        (progn
-          (setq-local font-lock-defaults '(gpt-font-lock-keywords))
-          (font-lock-mode 1)
-          (font-lock-fontify-buffer))
-        )
-      (add-to-invisibility-spec 'gpt-prefix)))))
+            (setq-local font-lock-defaults '(gpt-font-lock-keywords))
+            (font-lock-mode 1)
+            (font-lock-fontify-buffer))
+          )
+        (add-to-invisibility-spec 'gpt-prefix)))))
 (gpt-dynamically-define-gpt-mode)
 
 (defun gpt-toggle-prefix ()
