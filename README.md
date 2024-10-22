@@ -4,7 +4,10 @@
 
 # gpt.el
 
-gpt.el is a simple Emacs package that lets you interact with instruction-following language models like GPT-4 and Claude 3.5 Sonnet from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or all visible buffers as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
+gpt.el is a simple Emacs package that lets you interact with instruction-following language models like GPT-4 and Claude 3.5 Sonnet from your editor. 
+You can either chat with a model or have it complete your text at-point.
+You start a chat by typing a natural language command (with history and completion support) and optionally use the current region or all visible buffers as input for the model. The chat is created in a temporary or named buffer, and is updated as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
+To complete at point, the model takes the buffer up to point as the text it should complete and the rest of the buffer content as context.
 
 ## Installation
 
@@ -85,7 +88,7 @@ By default, gpt.el uses the OpenAI API. To switch to the Anthropic API, you can 
 
 ## Usage
 
-### Running commands
+### Chat
 
 To run a generative model command, use the `gpt-dwim` function. You can bind it to a key of your choice, for example:
 
@@ -107,29 +110,40 @@ If you want to use all visible buffers as input, use the `gpt-dwim-all-buffers` 
 (global-set-key (kbd "M-C-b") 'gpt-dwim-all-buffers)
 ```
 
-### Follow-up commands
+#### Follow-up commands
 
 In the gpt-output buffer, `C-c C-c` is bound to running a follow-up command that is provided the previous commands and outputs as input. For example, you can run a command "Explain this in more detail" to get more information about the previous response.
 
-### Copying code blocks
+#### Copying code blocks
 
 In the gpt-output buffer, `C-c C-b` is bound to copying the content of the code block at point to the clipboard.
 
-### Toggling prefix visibility
+#### Toggling prefix visibility
 
 In the gpt-output buffer, `C-c C-p` is bound to toggling the visibility of the "User:", "Human:", and "Assistant:" prefixes.
+
+#### History
+
+You can view the command history by calling `gpt-display-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name. To clear the command history, use the `gpt-clear-command-history` function.
+
+#### GPT buffer names
+
+By default, the created buffer names will just be the first `gpt-buffer-name-length` characters of the original command. To have more meaningful names, you can have GPT generate it for you via `gpt-generate-buffer-name` (`C-c C-t`). Note that this call to GPT is synchronous. 
+
+### Complete at point
+
+To have the model complete what you're writing, you can use `gpt-complete-at-point`. As before, you can bind it to your prefered key, for example,
+
+```elisp
+(global-set-key (kbd "M-C-n") 'gpt-complete-at-point)
+```
+
+The model will be instructed to complete the text from the start of the buffer up to your current point. It will be given the remainder of the buffer to use as context.
+The completion will be displayed incrementally using the face defined in `gpt-completion-preview-face`. Once the completion is done, hit `RET` to accept it or any other key to discard it.
 
 ### Switching models
 
 You can switch between different models (GPT-4, GPT-3.5-turbo, and Claude 3 Sonnet) using the `gpt-switch-model` function. In the gpt-output buffer, `C-c C-m` is bound to this function. When called, it will prompt you to choose a model from the available options.
-
-### History
-
-You can view the command history by calling `gpt-display-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name. To clear the command history, use the `gpt-clear-command-history` function.
-
-### GPT buffer names
-
-By default, the created buffer names will just be the first `gpt-buffer-name-length` characters of the original command. To have more meaningful names, you can have GPT generate it for you via `gpt-generate-buffer-name` (`C-c C-t`). Note that this call to GPT is synchronous. 
 
 ## Contributing
 
