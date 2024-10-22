@@ -108,12 +108,9 @@ have the same meaning as for `completing-read'."
   (with-current-buffer buffer
     (goto-char (point-max))
     (font-lock-fontify-buffer)
-    (let* ((prompt-file (gpt-create-prompt-file buffer))
-           (process (gpt-start-process prompt-file buffer))
-           (timer (gpt-start-timer process)))
-      (gpt-set-process-sentinel process timer prompt-file)
-      (message "GPT: Running command...")
-      (font-lock-fontify-buffer))))
+    (gpt-make-process "chat" (gpt-create-prompt-file buffer) buffer)
+    (message "GPT: Running command...")
+    (font-lock-fontify-buffer)))
 
 (defun gpt-insert-command (command)
   "Insert COMMAND to GPT in chat format into the current buffer."
@@ -196,23 +193,30 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
   (with-current-buffer buffer
     (buffer-string)))
 
-(defun gpt-create-prompt-file (buffer)
-  "Create a temporary file containing the prompt string from BUFFER text."
-  (let ((temp-file (make-temp-file "gpt-prompt")))
+(defun gpt-create-prompt-file (input)
+  "Create a temporary file containing the prompt string from INPUT, which can be a buffer or a string."
+  (let ((temp-file (make-temp-file "gpt-prompt"))
+        (content (if (bufferp input)
+                     (gpt-buffer-string input)
+                   input)))
     (with-temp-file temp-file
-      (insert (gpt-buffer-string buffer)))
+      (insert content))
     (message "GPT: Prompt written to %s" temp-file)
     temp-file))
 
-(defun gpt-start-process (prompt-file output-buffer)
-  "Start the GPT process with the given PROMPT-FILE and OUTPUT-BUFFER.
-Use `gpt-script-path' as the executable and pass the other arguments as a list."
+
+(defun gpt-make-process (gpt-script-command prompt-file output-buffer)
+  "Create a GPT process with GPT-SCRIPT-COMMAND, PROMPT-FILE, and OUTPUT-BUFFER.
+Use `gpt-python-path' and `gpt-script-path' to execute the command with necessary arguments."
   (let* ((api-key (if (eq gpt-api-type 'openai) gpt-openai-key gpt-anthropic-key))
          (api-type-str (symbol-name gpt-api-type))
-         (process (start-process "gpt-process" output-buffer
-                                 gpt-python-path gpt-script-path
-                                 "chat" prompt-file api-key gpt-model gpt-max-tokens gpt-temperature
-                                 api-type-str)))
+         (process (make-process
+                   :name "gpt-process"
+                   :buffer output-buffer
+                   :command (list gpt-python-path gpt-script-path gpt-script-command prompt-file api-key gpt-model gpt-max-tokens gpt-temperature api-type-str)
+                   :connection-type 'pipe))
+         (timer (gpt-start-timer process)))
+    (gpt-set-process-sentinel process timer prompt-file)
     process))
 
 (defvar gpt-buffer-counter 0
@@ -357,33 +361,23 @@ PROMPT-FILE is the temporary file containing the prompt."
   '((t :inherit default :underline t :weight bold))
   "Face for previewing code completions.")
 
-
 (defun gpt-complete-at-point ()
   "Get completion from gpt based on buffer content up to point.
 The generated completion is displayed directly in buffer and can be accepted with RET."
   (interactive)
-  (let* ((api-key gpt-openai-key)
-         (api-key (if (eq gpt-api-type 'openai) gpt-openai-key gpt-anthropic-key))
-         (api-type-str (symbol-name gpt-api-type))
-         ;; TODO: align with process creation for gpt-run-buffer
-         (process (make-process
-                   :name "gpt-complete-at-point-process"
-                   :buffer "*GPT Complete-at-point*"
-                   :command (list gpt-python-path gpt-script-path "complete" api-key gpt-model gpt-max-tokens gpt-temperature api-type-str)
-                   :connection-type 'pipe))
-         (start-point (point))
+  (let* ((start-point (point))
          (overlay (make-overlay start-point start-point))
-         (buffer-content (buffer-substring-no-properties (point-min) start-point)))
+         (buffer-content (buffer-substring-no-properties (point-min) start-point))
+         (buffer-rest (buffer-substring-no-properties start-point (point-max)))
+         (prompt (concat buffer-content "\n" "GPTContext: " buffer-rest))
+         (prompt-file (gpt-create-prompt-file prompt))
+         (process (gpt-make-process "complete" prompt-file nil)))
     (overlay-put overlay 'face 'gpt-completion-preview-face)
-    (set-process-filter
-     process
-     (lambda (proc string)
-       (insert string)
-       ;; Update the overlay to cover the new text
-       (move-overlay overlay start-point (point))))
-    (process-send-string process (concat buffer-content "\n"))
-    (process-send-eof process)
-    ;; Wait for user confirmatio
+    (set-process-filter process (lambda (proc string)
+                                  (insert string)
+                                  ;; Update the overlay to cover the new text
+                                  (move-overlay overlay start-point (point))))
+    ;; Wait for user confirmation
     (let ((response (read-key (format "Press RET to accept completion, any other key to cancel"))))
       (if (eq response ?\r)
           (delete-overlay overlay)  ; Remove overlay if accepted

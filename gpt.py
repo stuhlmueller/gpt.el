@@ -34,10 +34,8 @@ except ImportError:
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="command", help="Which subcommand to run", required=True)
-    chat_parser = subparsers.add_parser("chat")
-    subparsers.add_parser("complete")
-    chat_parser.add_argument("prompt_file", help="The file that contains the prompt.")
+    parser.add_argument("command", choices=("chat", "complete"))
+    parser.add_argument("prompt_file", help="The file that contains the prompt.")
     parser.add_argument("api_key", help="The API key to use for the selected API.")
     parser.add_argument("model", help="The model to use (e.g., 'gpt-4', 'claude-3-sonnet-20240229').")
     parser.add_argument("max_tokens", help="Max tokens value to be used with the API.")
@@ -178,16 +176,13 @@ def write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
         sys.exit(1)
 
 def stream_chat(
-    prompt_file: str,
+    prompt: str,
     api_key: str,
     api_type: str,
     model: str,
     max_tokens: str,
     temperature: str,
 ) -> None:
-
-    with open(prompt_file, "r") as fdes:
-        prompt = fdes.read()
 
     if api_type == "openai":
         stream = stream_openai_chat_completions(
@@ -206,9 +201,8 @@ def stream_chat(
 
 
 def complete_prompt(
-    api_key: str, api_type: str, model: str, max_tokens: str, temperature: str
+    prompt: str, api_key: str, api_type: str, model: str, max_tokens: str, temperature: str
 ) -> None:
-    prompt = read_input_text()
     if api_type == "openai":
         client = openai.OpenAI(api_key=api_key)
         req_fn = client.chat.completions.create
@@ -217,6 +211,8 @@ def complete_prompt(
         client = anthropic.Anthropic(api_key=api_key)
         req_fn = client.messages.create
         err = anthropic.APIError
+
+    to_complete, context = prompt.split("GPTContext: ")
     messages = []
     messages.append(
         {
@@ -224,7 +220,9 @@ def complete_prompt(
             "content": "Complete the following without including anything else, e.g., no comments, no triple backticks.",
         }
     )
-    messages.append({"role": "user", "content": prompt})
+    messages.append({"role": "user", "content": to_complete})
+    if context:
+        messages.append({"role": "system", "content": f"Use the following as context: {context}"})
 
     try:
         stream = req_fn(
@@ -245,9 +243,11 @@ def main() -> None:
     using the specified API, and save the completions to a JSONL file.
     """
     args = parse_args()
+    with open(args.prompt_file, "r") as fdes:
+        prompt = fdes.read()
     if args.command == "chat":
         stream_chat(
-            args.prompt_file,
+            prompt,
             args.api_key,
             args.api_type,
             args.model,
@@ -256,7 +256,7 @@ def main() -> None:
         )
     elif args.command == "complete":
         complete_prompt(
-            args.api_key, args.api_type, args.model, args.max_tokens, args.temperature
+            prompt, args.api_key, args.api_type, args.model, args.max_tokens, args.temperature
         )
     else:
         print(f"Error: Unsupported command '{args.command}'")
