@@ -138,7 +138,6 @@ def stream_anthropic_chat_completions(
         )
     except anthropic.APIError as error:
         print(f"Error: {error}")
-
         sys.exit(1)
 
 def print_and_collect_completions(stream, api_type: APIType) -> str:
@@ -203,26 +202,28 @@ def stream_chat(
 def complete_prompt(
     prompt: str, api_key: str, api_type: str, model: str, max_tokens: str, temperature: str
 ) -> None:
+    messages = []
+    to_complete, context = prompt.split("GPTContext: ")
+    messages.append({"role": "user", "content": to_complete})
+    kwargs = {}
+    instructions = "Complete the following without including anything else, e.g., no comments, no triple backticks."
+    if context:
+        instructions += f"\nUse the following as context: {context}"
     if api_type == "openai":
         client = openai.OpenAI(api_key=api_key)
         req_fn = client.chat.completions.create
         err = openai.APIError
+        messages.append(
+            {
+                "role": "system",
+                "content": instructions,
+            }
+        )
     else:
         client = anthropic.Anthropic(api_key=api_key)
         req_fn = client.messages.create
         err = anthropic.APIError
-
-    to_complete, context = prompt.split("GPTContext: ")
-    messages = []
-    messages.append(
-        {
-            "role": "system",
-            "content": "Complete the following without including anything else, e.g., no comments, no triple backticks.",
-        }
-    )
-    messages.append({"role": "user", "content": to_complete})
-    if context:
-        messages.append({"role": "system", "content": f"Use the following as context: {context}"})
+        kwargs["system"] = instructions
 
     try:
         stream = req_fn(
@@ -230,11 +231,14 @@ def complete_prompt(
             messages=messages,
             max_tokens=int(max_tokens),
             temperature=float(temperature),
-            stream=True
+            stream=True,
+            **kwargs,
         )
         print_and_collect_completions(stream, api_type)
     except err as exception:
         print(f"Error: {exception}")
+        sys.exit(1)
+
 
 
 def main() -> None:
@@ -260,6 +264,7 @@ def main() -> None:
         )
     else:
         print(f"Error: Unsupported command '{args.command}'")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
