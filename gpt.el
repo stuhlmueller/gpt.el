@@ -163,7 +163,7 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
     (gpt-insert-command command)
     (gpt-run-buffer (current-buffer))))
 
-(defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Say only the title, nothing else. No quotes."
+(defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Return a single title, nothing else. No quotes."
   "The instruction given to GPT to generate a buffer name.")
 
 (defun gpt-generate-buffer-name ()
@@ -173,16 +173,13 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
     (user-error "Not in a gpt output buffer"))
   (let* ((gpt-buffer (current-buffer))
          (buffer-string (gpt-buffer-string gpt-buffer))
-         (prompt (concat buffer-string "\n\nUser: " gpt-generate-buffer-name-instruction)))
+         (prompt (concat buffer-string "\n\nUser: " gpt-generate-buffer-name-instruction))
+         (prompt-file (gpt-create-prompt-file prompt)))
     (with-temp-buffer
-      (insert prompt)
-      (let ((prompt-file (gpt-create-prompt-file (current-buffer)))
-            (api-key (if (eq gpt-api-type 'openai) gpt-openai-key gpt-anthropic-key))
-            (api-type-str (symbol-name gpt-api-type)))
-        (erase-buffer)
+      (let ((process (gpt-make-process "chat" prompt-file (current-buffer))))
         (message "Asking GPT to generate buffer name...")
-        (call-process gpt-python-path nil t nil
-                      gpt-script-path api-key gpt-model gpt-max-tokens gpt-temperature api-type-str prompt-file)
+        (while (process-live-p process)
+          (accept-process-output process))
         (let ((generated-title (string-trim (buffer-string))))
           (with-current-buffer gpt-buffer
             (rename-buffer (gpt-get-output-buffer-name generated-title))))))))
