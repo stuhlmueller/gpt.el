@@ -355,7 +355,7 @@ PROMPT-FILE is the temporary file containing the prompt."
     (message "Switched to %s model: %s" (car model-info) (cdr model-info))))
 
 (defface gpt-completion-preview-face
-  '((t :inherit default :underline t :weight bold))
+  '((t :inherit current :underline t :weight bold))
   "Face for previewing code completions.")
 
 (defvar gpt-complete-at-point-instructions "User: Complete the prompt without including anything else, e.g., no comments, no triple backticks."
