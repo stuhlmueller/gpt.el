@@ -34,7 +34,6 @@ except ImportError:
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("chat", "complete"))
     parser.add_argument("prompt_file", help="The file that contains the prompt.")
     parser.add_argument("api_key", help="The API key to use for the selected API.")
     parser.add_argument("model", help="The model to use (e.g., 'gpt-4', 'claude-3-sonnet-20240229').")
@@ -43,12 +42,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("api_type", type=str, choices=("openai", "anthropic"), help="The type of API to use: 'openai' or 'anthropic'.")
     return parser.parse_args()
 
-def read_input_text() -> str:
-    """Read input text from stdin."""
-    return sys.stdin.read()
-
 def stream_openai_chat_completions(
-    prompt: str, api_key: str, model: str, max_tokens: str, temperature: str
+    prompt: str, api_key: str, model: str, max_tokens: str, temperature: str, instructions: str | None
 ) -> openai.Stream:
     """Stream chat completions from the OpenAI API."""
     if openai is None:
@@ -73,6 +68,14 @@ def stream_openai_chat_completions(
         content = match.group(2).strip()
         messages.append({"role": role, "content": content})
 
+    if instructions:
+        messages.append(
+            {
+                "role": "system",
+                "content": instructions,
+            }
+        )
+
     try:
         return client.chat.completions.create(
             model=model,
@@ -86,7 +89,7 @@ def stream_openai_chat_completions(
         sys.exit(1)
 
 def stream_anthropic_chat_completions(
-    prompt: str, api_key: str, model: str, max_tokens: str, temperature: str
+    prompt: str, api_key: str, model: str, max_tokens: str, temperature: str, instructions: str | None
 ) -> anthropic.Anthropic:
     """Stream chat completions from the Anthropic API."""
     if anthropic is None:
@@ -127,7 +130,10 @@ def stream_anthropic_chat_completions(
             messages.append({"role": "assistant", "content": content})
     if current_user_message is not None:
         messages.append({"role": "user", "content": current_user_message})
-
+    
+    extra_kwargs = {}
+    if instructions:
+        extra_kwargs["system"] = instructions
     try:
         return client.messages.create(
             model=model,
@@ -135,6 +141,7 @@ def stream_anthropic_chat_completions(
             max_tokens=int(max_tokens),
             temperature=float(temperature),
             stream=True,
+            **extra_kwargs
         )
     except anthropic.APIError as error:
         print(f"Error: {error}")
@@ -183,13 +190,19 @@ def stream_chat(
     temperature: str,
 ) -> None:
 
+    instruction_sep = "GPTInstructions: "
+    if instruction_sep in prompt:
+        prompt, instructions = prompt.split(instruction_sep)
+    else:
+        instructions = None
+
     if api_type == "openai":
         stream = stream_openai_chat_completions(
-            prompt, api_key, model, max_tokens, temperature
+            prompt, api_key, model, max_tokens, temperature, instructions
         )
     elif api_type == "anthropic":
         stream = stream_anthropic_chat_completions(
-            prompt, api_key, model, max_tokens, temperature
+            prompt, api_key, model, max_tokens, temperature, instructions
         )
     else:
         print(f"Error: Unsupported API type '{api_type}'")
@@ -197,48 +210,6 @@ def stream_chat(
     completion_text = print_and_collect_completions(stream, api_type)
     file_name = Path.home() / ".emacs_prompts_completions.jsonl"
     write_to_jsonl(prompt, completion_text, file_name)
-
-
-def complete_prompt(
-    prompt: str, api_key: str, api_type: str, model: str, max_tokens: str, temperature: str
-) -> None:
-    messages = []
-    to_complete, context = prompt.split("GPTContext: ")
-    messages.append({"role": "user", "content": to_complete})
-    kwargs = {}
-    instructions = "Complete the following without including anything else, e.g., no comments, no triple backticks."
-    if context:
-        instructions += f"\nUse the following as context: {context}"
-    if api_type == "openai":
-        client = openai.OpenAI(api_key=api_key)
-        req_fn = client.chat.completions.create
-        err = openai.APIError
-        messages.append(
-            {
-                "role": "system",
-                "content": instructions,
-            }
-        )
-    else:
-        client = anthropic.Anthropic(api_key=api_key)
-        req_fn = client.messages.create
-        err = anthropic.APIError
-        kwargs["system"] = instructions
-
-    try:
-        stream = req_fn(
-            model=model,
-            messages=messages,
-            max_tokens=int(max_tokens),
-            temperature=float(temperature),
-            stream=True,
-            **kwargs,
-        )
-        print_and_collect_completions(stream, api_type)
-    except err as exception:
-        print(f"Error: {exception}")
-        sys.exit(1)
-
 
 
 def main() -> None:
@@ -249,22 +220,14 @@ def main() -> None:
     args = parse_args()
     with open(args.prompt_file, "r") as fdes:
         prompt = fdes.read()
-    if args.command == "chat":
-        stream_chat(
-            prompt,
-            args.api_key,
-            args.api_type,
-            args.model,
-            args.max_tokens,
-            args.temperature,
-        )
-    elif args.command == "complete":
-        complete_prompt(
-            prompt, args.api_key, args.api_type, args.model, args.max_tokens, args.temperature
-        )
-    else:
-        print(f"Error: Unsupported command '{args.command}'")
-        sys.exit(1)
+    stream_chat(
+        prompt,
+        args.api_key,
+        args.api_type,
+        args.model,
+        args.max_tokens,
+        args.temperature,
+    )
 
 
 if __name__ == "__main__":
