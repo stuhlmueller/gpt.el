@@ -358,7 +358,7 @@ PROMPT-FILE is the temporary file containing the prompt."
   '((t :inherit current :underline t :weight bold))
   "Face for previewing code completions.")
 
-(defvar gpt-complete-at-point-instructions "User: Complete the prompt without including anything else, e.g., no comments, no triple backticks."
+(defvar gpt-complete-at-point-instructions "Provide a short completion to be inserted at <cursor>. Only provide the completion, no commentary, no quotes. Your response will directly be inserted."
   "The instructions to give gpt so that it performs completion at point without any noise.")
 
 (defun gpt-complete-at-point ()
@@ -369,8 +369,7 @@ The generated completion is displayed directly in buffer and can be accepted wit
          (overlay (make-overlay start-point start-point))
          (buffer-content (buffer-substring-no-properties (point-min) start-point))
          (buffer-rest (buffer-substring-no-properties start-point (point-max)))
-         (instructions (concat gpt-complete-at-point-instructions "Use the following as context: " buffer-rest))
-         (prompt (concat "User: " buffer-content "\n" "GPTInstructions: " instructions))
+         (prompt (concat "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " gpt-complete-at-point-instructions))
          (prompt-file (gpt-create-prompt-file prompt))
          (process (gpt-make-process prompt-file nil)))
     (overlay-put overlay 'face 'gpt-completion-preview-face)
