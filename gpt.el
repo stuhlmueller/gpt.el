@@ -163,6 +163,72 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
     (gpt-insert-command command)
     (gpt-run-buffer (current-buffer))))
 
+(defvar gpt-transform-region-instructions
+  "You should transform what is inside <region>. Only change what was requested without anything else, e.g., no explanatory comments, no triple backticks. Your response will replace what is inside region as is."
+  "The instruction to give gpt so that it performs the transformation as intended.")
+
+
+(defun gpt-transform-region ()
+  "Transform the selected region.
+Ask the user for the transformation and then replace the selected region by the response."
+  (interactive)
+  (let* ((start (region-beginning))
+         (end (region-end))
+         (region-content (buffer-substring-no-properties start end))
+         (buffer-before (buffer-substring-no-properties (point-min) start))
+         (buffer-after (buffer-substring-no-properties end (point-max)))
+         (command (gpt-read-command))
+         (prompt (concat "User: " command "\n" "<region>" region-content "<region>" "\n" gpt-transform-region-instructions "\n" "GPTContext: " buffer-before "\n" buffer-after))
+         (prompt-file (gpt-create-prompt-file prompt))
+         (insertion-marker (make-marker))
+         (process (gpt-make-process prompt-file nil)))
+    (delete-region start end)
+    (set-marker insertion-marker (point))
+    (set-process-filter process (lambda (proc string)
+                                  (save-excursion
+                                    (goto-char insertion-marker)
+                                    (insert string)
+                                    (set-marker insertion-marker (point)))))))
+
+(defface gpt-completion-preview-face
+  '((t :inherit current :underline t :weight bold))
+  "Face for previewing code completions.")
+
+(defvar gpt-complete-at-point-instructions "Provide a short completion to be inserted at <cursor>. Only provide the completion, no commentary, no quotes. Your response will directly be inserted."
+  "The instructions to give gpt so that it performs completion at point without any noise.")
+
+(defun gpt-complete-at-point ()
+  "Get completion from gpt based on buffer content up to point.
+The generated completion is displayed directly in buffer and can be accepted with RET."
+  (interactive)
+  (let* ((start-point (point))
+         (overlay (make-overlay start-point start-point))
+         (buffer-content (buffer-substring-no-properties (point-min) start-point))
+         (buffer-rest (buffer-substring-no-properties start-point (point-max)))
+         (prompt (concat "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " gpt-complete-at-point-instructions))
+         (prompt-file (gpt-create-prompt-file prompt))
+         (insertion-marker (make-marker))
+         (process (gpt-make-process prompt-file nil)))
+    (overlay-put overlay 'face 'gpt-completion-preview-face)
+    (set-marker insertion-marker (point))
+    (set-process-filter process (lambda (proc string)
+                                  (save-excursion
+                                    (goto-char insertion-marker)
+                                    (insert string)
+                                    ;; Update the overlay to cover the new text
+                                    (move-overlay overlay start-point (point))
+                                    (set-marker insertion-marker (point)))))
+    ;; Wait for user confirmation
+    (let ((response (read-key (format "Press RET to accept completion, any other key to cancel"))))
+      (if (eq response ?\r)
+          (delete-overlay overlay)  ; Remove overlay if accepted
+        (delete-region start-point (point))  ; Remove text if canceled
+        (delete-overlay overlay)
+        (message "Completion canceled")))))
+
+
+
+
 (defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Return a single title, nothing else. No quotes."
   "The instruction given to GPT to generate a buffer name.")
 
@@ -354,36 +420,7 @@ PROMPT-FILE is the temporary file containing the prompt."
           gpt-model (cdr model-info))
     (message "Switched to %s model: %s" (car model-info) (cdr model-info))))
 
-(defface gpt-completion-preview-face
-  '((t :inherit current :underline t :weight bold))
-  "Face for previewing code completions.")
 
-(defvar gpt-complete-at-point-instructions "Provide a short completion to be inserted at <cursor>. Only provide the completion, no commentary, no quotes. Your response will directly be inserted."
-  "The instructions to give gpt so that it performs completion at point without any noise.")
-
-(defun gpt-complete-at-point ()
-  "Get completion from gpt based on buffer content up to point.
-The generated completion is displayed directly in buffer and can be accepted with RET."
-  (interactive)
-  (let* ((start-point (point))
-         (overlay (make-overlay start-point start-point))
-         (buffer-content (buffer-substring-no-properties (point-min) start-point))
-         (buffer-rest (buffer-substring-no-properties start-point (point-max)))
-         (prompt (concat "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " gpt-complete-at-point-instructions))
-         (prompt-file (gpt-create-prompt-file prompt))
-         (process (gpt-make-process prompt-file nil)))
-    (overlay-put overlay 'face 'gpt-completion-preview-face)
-    (set-process-filter process (lambda (proc string)
-                                  (insert string)
-                                  ;; Update the overlay to cover the new text
-                                  (move-overlay overlay start-point (point))))
-    ;; Wait for user confirmation
-    (let ((response (read-key (format "Press RET to accept completion, any other key to cancel"))))
-      (if (eq response ?\r)
-          (delete-overlay overlay)  ; Remove overlay if accepted
-        (delete-region start-point (point))  ; Remove text if canceled
-        (delete-overlay overlay)
-        (message "Completion canceled")))))
 
 (define-key gpt-mode-map (kbd "C-c C-c") 'gpt-follow-up)
 (define-key gpt-mode-map (kbd "C-c C-p") 'gpt-toggle-prefix)
