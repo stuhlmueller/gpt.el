@@ -53,6 +53,14 @@
 (defvar gpt-use-named-buffers t
   "If non-nil, use named buffers for GPT output. Otherwise, use temporary buffers.")
 
+(defvar gpt-project-file-context nil
+  "List of project files whose content should be included as context.")
+
+(defvar gpt-project-context-format
+  "Project Context Files:\n%s\n\nFile Contents:\n%s\n\n"
+  "Format string for including project context in prompts.
+First %s is replaced with the list of files, second with their contents.")
+
 (add-to-list 'savehist-additional-variables 'gpt-command-history)
 
 (defun gpt-display-command-history ()
@@ -125,9 +133,72 @@ have the same meaning as for `completing-read'."
               contents)))
     (mapconcat 'identity (nreverse contents) "\n\n")))
 
-(defun gpt-dwim (&optional all-buffers)
+(defun gpt-get-project-files ()
+  "Get list of files in current project using project.el or projectile.el."
+  (cond
+   ((and (fboundp 'project-current)
+         (project-current))
+    (project-files (project-current)))
+   ((and (fboundp 'projectile-project-root)
+         (projectile-project-root))
+    (projectile-project-files))
+   (t
+    (error "No project found. Please use project.el or projectile.el"))))
+
+(defun gpt-read-multiple-files (files)
+  "Let user select multiple FILES using completion.
+Return list of selected files."
+  (let ((choices files)
+        (selection nil)
+        (done nil)
+        (selected-files '()))
+    (while (not done)
+      (setq selection
+            (completing-read
+             (format "Select file [%d selected, RET when done]: "
+                     (length selected-files))
+             choices nil nil))
+      selection (type-of selection) (length selection))
+    (if (string-empty-p selection)
+        (setq done t)
+      (push selection selected-files)
+      (setq choices (delete selection choices))))
+  (nreverse selected-files)))
+
+(defun gpt-select-project-files ()
+  "Prompt user to select files from project to use as context."
+  (interactive)
+  (let* ((all-files (gpt-get-project-files))
+         (relative-files (mapcar (lambda (f)
+                                   (file-relative-name f (project-root (project-current))))
+                                 all-files)))
+    (setq gpt-project-file-context
+          (gpt-read-multiple-files relative-files))
+    (message "Selected %d files for context" (length gpt-project-file-context))))
+
+(defun gpt-get-file-contents (files)
+  "Get contents of FILES as a formatted string."
+  (let ((file-contents "")
+        (project-root (project-root (project-current))))
+    (dolist (file files)
+      (condition-case err
+          (setq file-contents
+                (concat file-contents
+                        (format "\nFile: %s\n```\n%s\n```\n"
+                                file
+                                (with-temp-buffer
+                                  (insert-file-contents
+                                   (expand-file-name file project-root))
+                                  (let ((content (buffer-string)))
+                                    content)))))
+        (error
+         (message "Error reading file %s: %s" file (error-message-string err)))))
+    file-contents))
+
+(defun gpt-chat (&optional all-buffers)
   "Run user-provided GPT command on region or all visible buffers and print output stream.
-If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible buffers as input. Otherwise, use the current region."
+If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible buffers as input.
+Otherwise, use the current region."
   (interactive "P")
   (let* ((initial-buffer (current-buffer))
          (command (gpt-read-command))
@@ -135,19 +206,26 @@ If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible
          (input (if all-buffers
                     (gpt-get-visible-buffers-content)
                   (when (use-region-p)
-                    (buffer-substring-no-properties (region-beginning) (region-end))))))
+                    (buffer-substring-no-properties (region-beginning) (region-end)))))
+         (project-context (when gpt-project-file-context
+                            (let ((ctx (format gpt-project-context-format
+                                               (mapconcat #'identity gpt-project-file-context "\n")
+                                               (gpt-get-file-contents gpt-project-file-context))))
+                              ctx))))
     (switch-to-buffer-other-window output-buffer)
+    (when project-context
+      (insert (format "User:\n\n%s" project-context)))
     (when input
       (insert (format "User:\n\n```\n%s\n```\n\n" input)))
     (gpt-insert-command command)
     (gpt-run-buffer output-buffer)))
 
-(defun gpt-dwim-all-buffers ()
+(defun gpt-chat-all-buffers ()
   "Run user-provided GPT command on all visible buffers and print output stream."
   (interactive)
-  (gpt-dwim t))
+  (gpt-chat t))
 
-(defun gpt-follow-up ()
+(defun gpt-chat-follow-up ()
   "Run a follow-up GPT command on the output buffer and append the output stream."
   (interactive)
   (unless (eq major-mode 'gpt-mode)
@@ -173,7 +251,15 @@ Ask the user for the transformation and then replace the selected region by the 
          (buffer-before (buffer-substring-no-properties (point-min) start))
          (buffer-after (buffer-substring-no-properties end (point-max)))
          (command (gpt-read-command))
-         (prompt (concat "User: " command "\n" "<region>" region-content "<region>" "\n" gpt-transform-region-instructions "\n" "GPTContext: " buffer-before "\n" buffer-after))
+         (project-context (when gpt-project-file-context
+                            (format gpt-project-context-format
+                                    (mapconcat #'identity gpt-project-file-context "\n")
+                                    (gpt-get-file-contents gpt-project-file-context))))
+         (prompt (concat (when project-context (concat "User:\n\n" project-context))
+                         "User: " command "\n"
+                         "<region>" region-content "<region>" "\n"
+                         gpt-transform-region-instructions "\n"
+                         "GPTContext: " buffer-before "\n" buffer-after))
          (prompt-file (gpt-create-prompt-file prompt))
          (insertion-marker (make-marker))
          (process (gpt-make-process prompt-file nil)))
@@ -200,7 +286,12 @@ The generated completion is displayed directly in buffer and can be accepted wit
          (overlay (make-overlay start-point start-point))
          (buffer-content (buffer-substring-no-properties (point-min) start-point))
          (buffer-rest (buffer-substring-no-properties start-point (point-max)))
-         (prompt (concat "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " gpt-complete-at-point-instructions))
+         (project-context (when gpt-project-file-context
+                            (format gpt-project-context-format
+                                    (mapconcat #'identity gpt-project-file-context "\n")
+                                    (gpt-get-file-contents gpt-project-file-context))))
+         (prompt (concat (when project-context (concat "User:\n\n" project-context))
+                         "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " gpt-complete-at-point-instructions))
          (prompt-file (gpt-create-prompt-file prompt))
          (insertion-marker (make-marker))
          (process (gpt-make-process prompt-file nil)))
@@ -220,9 +311,6 @@ The generated completion is displayed directly in buffer and can be accepted wit
         (delete-region start-point (point))  ; Remove text if canceled
         (delete-overlay overlay)
         (message "Completion canceled")))))
-
-
-
 
 (defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Return a single title, nothing else. No quotes."
   "The instruction given to GPT to generate a buffer name.")
@@ -245,7 +333,6 @@ The generated completion is displayed directly in buffer and can be accepted wit
           (with-current-buffer gpt-buffer
             (rename-buffer (gpt-get-output-buffer-name generated-title))))))))
 
-
 (defun gpt-buffer-string (buffer)
   "Get BUFFER text as string."
   (with-current-buffer buffer
@@ -261,7 +348,6 @@ The generated completion is displayed directly in buffer and can be accepted wit
       (insert content))
     (message "GPT: Prompt written to %s" temp-file)
     temp-file))
-
 
 (defun gpt-make-process (prompt-file output-buffer)
   "Create a GPT process with PROMPT-FILE, and OUTPUT-BUFFER.
@@ -415,13 +501,12 @@ PROMPT-FILE is the temporary file containing the prompt."
           gpt-model (cdr model-info))
     (message "Switched to %s model: %s" (car model-info) (cdr model-info))))
 
-
-
-(define-key gpt-mode-map (kbd "C-c C-c") 'gpt-follow-up)
+(define-key gpt-mode-map (kbd "C-c C-c") 'gpt-chat-follow-up)
 (define-key gpt-mode-map (kbd "C-c C-p") 'gpt-toggle-prefix)
 (define-key gpt-mode-map (kbd "C-c C-b") 'gpt-copy-code-block)
 (define-key gpt-mode-map (kbd "C-c C-m") 'gpt-switch-model)
 (define-key gpt-mode-map (kbd "C-c C-t") 'gpt-generate-buffer-name)
+(define-key gpt-mode-map (kbd "C-c C-f") 'gpt-select-project-files)
 
 (provide 'gpt)
 
