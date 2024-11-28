@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2022 Andreas Stuhlmueller
+# Copyright (C) 2022 Andreas Stuhlmueller, 2024 Anselm Coogan
 # License: MIT
 # SPDX-License-Identifier: MIT
 
@@ -31,19 +31,35 @@ try:
 except ImportError:
     jsonlines = None
 
+
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("prompt_file", help="The file that contains the prompt.")
     parser.add_argument("api_key", help="The API key to use for the selected API.")
-    parser.add_argument("model", help="The model to use (e.g., 'gpt-4', 'claude-3-sonnet-20240229').")
+    parser.add_argument(
+        "model", help="The model to use (e.g., 'gpt-4', 'claude-3-sonnet-20240229')."
+    )
     parser.add_argument("max_tokens", help="Max tokens value to be used with the API.")
-    parser.add_argument("temperature", help="Temperature value to be used with the API.")
-    parser.add_argument("api_type", type=str, choices=("openai", "anthropic"), help="The type of API to use: 'openai' or 'anthropic'.")
+    parser.add_argument(
+        "temperature", help="Temperature value to be used with the API."
+    )
+    parser.add_argument(
+        "api_type",
+        type=str,
+        choices=("openai", "anthropic"),
+        help="The type of API to use: 'openai' or 'anthropic'.",
+    )
     return parser.parse_args()
 
+
 def stream_openai_chat_completions(
-    prompt: str, api_key: str, model: str, max_tokens: str, temperature: str, instructions: str | None
+    prompt: str,
+    api_key: str,
+    model: str,
+    max_tokens: str,
+    temperature: str,
+    instructions: str | None,
 ) -> openai.Stream:
     """Stream chat completions from the OpenAI API."""
     if openai is None:
@@ -53,7 +69,9 @@ def stream_openai_chat_completions(
 
     if api_key == "NOT SET":
         print("Error: OpenAI API key not set.")
-        print('Add (setq gpt-openai-key "sk-Aes.....AV8qzL") to your Emacs init.el file.')
+        print(
+            'Add (setq gpt-openai-key "sk-Aes.....AV8qzL") to your Emacs init.el file.'
+        )
         sys.exit(1)
 
     client = openai.OpenAI(api_key=api_key)
@@ -88,8 +106,14 @@ def stream_openai_chat_completions(
         print(f"Error: {error}")
         sys.exit(1)
 
+
 def stream_anthropic_chat_completions(
-    prompt: str, api_key: str, model: str, max_tokens: str, temperature: str, instructions: str | None
+    prompt: str,
+    api_key: str,
+    model: str,
+    max_tokens: str,
+    temperature: str,
+    instructions: str | None,
 ) -> anthropic.Anthropic:
     """Stream chat completions from the Anthropic API."""
     if anthropic is None:
@@ -99,7 +123,9 @@ def stream_anthropic_chat_completions(
 
     if api_key == "NOT SET":
         print("Error: Anthropic API key not set.")
-        print('Add (setq gpt-anthropic-key "sk-ant-api03-...") to your Emacs init.el file.')
+        print(
+            'Add (setq gpt-anthropic-key "sk-ant-api03-...") to your Emacs init.el file.'
+        )
         sys.exit(1)
 
     client = anthropic.Anthropic(api_key=api_key)
@@ -130,7 +156,7 @@ def stream_anthropic_chat_completions(
             messages.append({"role": "assistant", "content": content})
     if current_user_message is not None:
         messages.append({"role": "user", "content": current_user_message})
-    
+
     extra_kwargs = {}
     if instructions:
         extra_kwargs["system"] = instructions
@@ -141,11 +167,12 @@ def stream_anthropic_chat_completions(
             max_tokens=int(max_tokens),
             temperature=float(temperature),
             stream=True,
-            **extra_kwargs
+            **extra_kwargs,
         )
     except anthropic.APIError as error:
         print(f"Error: {error}")
         sys.exit(1)
+
 
 def print_and_collect_completions(stream, api_type: APIType) -> str:
     """Print and collect completions from the stream."""
@@ -167,6 +194,7 @@ def print_and_collect_completions(stream, api_type: APIType) -> str:
 
     return completion_text
 
+
 def write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
     """Write the prompt and completion to a jsonl file."""
     if jsonlines is None:
@@ -181,6 +209,7 @@ def write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
         print(f"Error: {error}")
         sys.exit(1)
 
+
 def stream_chat(
     prompt: str,
     api_key: str,
@@ -189,7 +218,6 @@ def stream_chat(
     max_tokens: str,
     temperature: str,
 ) -> None:
-
     instruction_sep = "GPTInstructions: "
     if instruction_sep in prompt:
         prompt, instructions = prompt.split(instruction_sep)
