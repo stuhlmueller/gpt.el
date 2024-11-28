@@ -13,6 +13,16 @@ The aim is to make sure emacs stays up-to-date with modern LLM support.
 - **Chat History Management**: Save, browse, and manage your chat history
 - **Multiple Model Support**: Switch between OpenAI and Anthropic models seamlessly
 
+| Chat Interface                                         | Completion at point                                                              |
+|--------------------------------------------------------|----------------------------------------------------------------------------------|
+| ![gpt-pilot-chat-demo](./resources/gpt-pilot-chat.gif) | ![gpt-pilot-complete-at-point-demo](./resources/gpt-pilot-complete-at-point.gif) |
+
+| Project Context                                                        | Region Transformation                                                   |
+|------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| ![gpt-pilot-with-context-demo](./resources/gpt-pilot-with-context.gif) | ![gpt-pilot-transform-region-demo](./resources/gpt-pilot-transform.gif) |
+
+
+
 ## Installation
 
 ### Prerequisites
@@ -86,12 +96,6 @@ Get completions based on your current cursor position:
 M-x gpt-pilot-complete-at-point
 ```
 
-### Region Transformation
-
-Transform selected text:
-```elisp
-M-x gpt-pilot-transform-region
-```
 
 ### Project Context
 
@@ -100,12 +104,23 @@ Set project files as context:
 M-x gpt-pilot-select-project-files
 ```
 
+Note that you'll need to run `gpt-pilot-clear-project-file-context` to remove the files from subsequent requests.
+
+### Region Transformation
+
+Transform selected text:
+```elisp
+M-x gpt-pilot-transform-region
+```
+
+
 ### Suggested Key Bindings
 
 ```elisp
-(global-set-key (kbd "C-c g c") 'gpt-pilot-chat)
-(global-set-key (kbd "C-c g t") 'gpt-pilot-transform-region)
-(global-set-key (kbd "C-c g p") 'gpt-pilot-complete-at-point)
+(global-set-key (kbd "M-C-g") 'gpt-pilot-chat)
+(global-set-key (kbd "M-C-n") 'gpt-pilot-complete-at-point)
+(global-set-key (kbd "M-C-t") 'gpt-pilot-transform-region)
+(global-set-key (kbd "M-C-s") 'gpt-pilot-select-project-files)
 ```
 
 ## Contributing
