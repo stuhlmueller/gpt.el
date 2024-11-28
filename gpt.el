@@ -1,6 +1,6 @@
 ;;; gpt.el --- Run instruction-following language models -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2022 Andreas Stuhlmueller, 2024 Anselm Coogan
+;; Copyright (C) 2022-2024 Andreas Stuhlmueller, 2024- Anselm Coogan
 
 ;; Author: Andreas Stuhlmueller <andreas@ought.org>
 ;; Maintainer: Anselm Coogan <anselm.coogan@gmail.com>
