@@ -1,31 +1,31 @@
-;;; gpt-pilot-completion.el --- Completion functionality for gpt-pilot.el -*- lexical-binding: t; -*-
-(require 'gpt-pilot-core)
-(require 'gpt-pilot-project)
+;;; le-gpt-completion.el --- Completion functionality for le-gpt.el -*- lexical-binding: t; -*-
+(require 'le-gpt-core)
+(require 'le-gpt-project)
 
-(defface gpt-pilot-completion-preview-face
+(defface le-gpt-completion-preview-face
   '((t :inherit current :underline t :weight bold))
   "Face for previewing code completions.")
 
-(defvar gpt-pilot-complete-at-point-instructions "Provide a short completion to be inserted at <cursor>. Only provide the completion, no commentary, no quotes. Your response will directly be inserted."
+(defvar le-gpt-complete-at-point-instructions "Provide a short completion to be inserted at <cursor>. Only provide the completion, no commentary, no quotes. Your response will directly be inserted."
   "The instructions to give gpt so that it performs completion at point without any noise.")
 
-(defun gpt-pilot-completion-at-point ()
+(defun le-gpt-completion-at-point ()
   "Get completion from gpt based on buffer content up to point.
 The generated completion is displayed directly in buffer and can be accepted with RET."
   (let* ((start-point (point))
          (overlay (make-overlay start-point start-point))
          (buffer-content (buffer-substring-no-properties (point-min) start-point))
          (buffer-rest (buffer-substring-no-properties start-point (point-max)))
-         (project-context (when gpt-pilot-project-file-context
-                            (format gpt-pilot-project-context-format
-                                    (mapconcat #'identity gpt-pilot-project-file-context "\n")
-                                    (gpt-pilot-get-file-contents gpt-pilot-project-file-context))))
+         (project-context (when le-gpt-project-file-context
+                            (format le-gpt-project-context-format
+                                    (mapconcat #'identity le-gpt-project-file-context "\n")
+                                    (le-gpt-get-file-contents le-gpt-project-file-context))))
          (prompt (concat (when project-context (concat "User:\n\n" project-context))
-                         "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " gpt-pilot-complete-at-point-instructions))
-         (prompt-file (gpt-pilot-create-prompt-file prompt))
+                         "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " le-gpt-complete-at-point-instructions))
+         (prompt-file (le-gpt-create-prompt-file prompt))
          (insertion-marker (make-marker))
-         (process (gpt-pilot-make-process prompt-file nil)))
-    (overlay-put overlay 'face 'gpt-pilot-completion-preview-face)
+         (process (le-gpt-make-process prompt-file nil)))
+    (overlay-put overlay 'face 'le-gpt-completion-preview-face)
     (set-marker insertion-marker (point))
     (set-process-filter process (lambda (proc string)
                                   (save-excursion
@@ -36,11 +36,11 @@ The generated completion is displayed directly in buffer and can be accepted wit
                                     (set-marker insertion-marker (point)))))
     ;; Wait for user confirmation
     (let ((response (read-key (format "Press RET to accept completion, any other key to cancel"))))
+      (delete-overlay overlay)
       (if (eq response ?\r)
-          (delete-overlay overlay)  ; Remove overlay if accepted
-        (delete-region start-point (point))  ; Remove text if canceled
-        (delete-overlay overlay)
-        (message "Completion canceled")))))
+          (insert "\n") ;; add a newline for good measure
+        (delete-region start-point (point))))))  ; Remove text if canceled
 
-(provide 'gpt-pilot-completion)
-;;; gpt-pilot-completion.el ends here
+
+(provide 'le-gpt-completion)
+;;; le-gpt-completion.el ends here
