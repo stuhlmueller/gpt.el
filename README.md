@@ -2,24 +2,22 @@
 
 gpt-pilot.el is a comprehensive Emacs package for interacting with large language models like GPT-4 and Claude 3.5 Sonnet. It's a feature-rich fork of [gpt.el](https://github.com/stuhlmueller/gpt.el) that adds project awareness, better chat management, and more sophisticated completion capabilities.
 
-The aim is to make sure emacs stays up-to-date with modern LLM support.
+The aim is to make sure emacs stays up-to-date with modern GPT support. Essentially CursorAI for emacs.
 
 ## Features
-
-- **Multiple Chat Sessions**: Create and manage multiple named chat sessions with different models
-- **Completion at Point**: Get context-aware completions as you type
-- **Region Transformations**: Transform selected text using natural language commands
-- **Project Context**: Include relevant project files as context for better responses
-- **Chat History Management**: Save, browse, and manage your chat history
-- **Multiple Model Support**: Switch between OpenAI and Anthropic models seamlessly
 
 | Chat Interface                                         | Completion at point                                                              |
 |--------------------------------------------------------|----------------------------------------------------------------------------------|
 | ![gpt-pilot-chat-demo](./resources/gpt-pilot-chat.gif) | ![gpt-pilot-complete-at-point-demo](./resources/gpt-pilot-complete-at-point.gif) |
+| Create and manage multiple chat sessions               | Let GPT complete what you're currently writing                                   |
+| `M-x gpt-pilot-chat`                                        | `M-x gpt-pilot-complete-at-point`                                                                                  |
 
-| Project Context                                                        | Region Transformation                                                   |
-|------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| ![gpt-pilot-with-context-demo](./resources/gpt-pilot-with-context.gif) | ![gpt-pilot-transform-region-demo](./resources/gpt-pilot-transform.gif) |
+
+| Project Context                                                                   | Region Transformation                                                   |
+|-----------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| ![gpt-pilot-with-context-demo](./resources/gpt-pilot-with-context.gif)            | ![gpt-pilot-transform-region-demo](./resources/gpt-pilot-transform.gif) |
+| Select files from your project that GPT should use as context                     | Select a region you want to GPT to transform                            |
+| `M-x gpt-pilot-select-project-files` & `M-x gpt-pilot-clear-project-file-context` | `M-x gpt-pilot-transform-region`                                        |
 
 
 
@@ -37,8 +35,6 @@ You don't need to install all of them, but minimally `openai` or `anthropic`.
 You'll also need API keys from [OpenAI](https://beta.openai.com/) and/or [Anthropic](https://console.anthropic.com).
 
 ### From MELPA
-TODO
-
 ```elisp
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
@@ -46,12 +42,11 @@ TODO
 ```
 
 ### Using use-package
-TODO
-
 ```elisp
 (use-package gpt-pilot
   :ensure t
   :config
+  ;; you need to set at least one of the following
   (setq gpt-pilot-openai-key "your-openai-key-here")
   (setq gpt-pilot-anthropic-key "your-anthropic-key-here"))
 ```
@@ -105,6 +100,7 @@ M-x gpt-pilot-select-project-files
 ```
 
 Note that you'll need to run `gpt-pilot-clear-project-file-context` to remove the files from subsequent requests.
+The context will be used by chat, completion and region transforms.
 
 ### Region Transformation
 
@@ -126,6 +122,13 @@ M-x gpt-pilot-transform-region
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues and pull requests on GitHub.
+
+### Feature roadmap
+
+ - [ ] Settings page
+ - [ ] Remove individual context files
+ - [ ] Add all files of current project as context
+ - [ ] Ability to let GPT decide which context files it needs
 
 ## License
 
