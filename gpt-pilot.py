@@ -5,30 +5,32 @@
 # SPDX-License-Identifier: MIT
 
 import sys
-import os
 import argparse
 import re
 from pathlib import Path
 from enum import Enum
 from typing import Union, AnyStr, Iterator
 
-
-openai = None
-anthropic = None
-jsonlines = None
-
 try:
     import openai
+except ImportError:
+    openai = None
+try:
     import anthropic
+except ImportError:
+    anthropic = None
+try:
     import jsonlines
 except ImportError:
-    pass
+    jsonlines = None
+
 
 class APIType(str, Enum):
     openai = "openai"
     anthropic = "anthropic"
 
-def _ensure_api_type_is_available(api_type: APIType)->None:
+
+def _ensure_api_type_is_available(api_type: APIType) -> None:
     if api_type == APIType.openai and openai is None:
         print("Error: OpenAI Python package is not installed.")
         print("Please install by running `pip install openai'.")
@@ -38,62 +40,79 @@ def _ensure_api_type_is_available(api_type: APIType)->None:
         print("Please install by running `pip install anthropic'.")
         sys.exit(1)
 
+
 def _ensure_api_key_is_set(api_key: str, api_type: APIType) -> None:
     if api_key == "NOT SET":
         api_name = "OpenAI" if api_type == APIType.openai else "Anthropic"
         print(f"Error: {api_name} API key not set.")
-        key_var = "gpt-openai-key" if api_type == APIType.openai else "gpt-anthropic-key"
+        key_var = (
+            "gpt-openai-key" if api_type == APIType.openai else "gpt-anthropic-key"
+        )
         print(f'Add (setq {key_var} "sk-...") to your Emacs init.el file.')
         sys.exit(1)
 
 
-def _build_messages_for_openai(matches: Iterator[re.Match[AnyStr]], instructions: str | None) -> list[dict[str, str]]:
+def _build_messages_for_openai(
+    matches: Iterator[re.Match[AnyStr]], instructions: str | None
+) -> list[dict[str, str]]:
     messages = [{"role": "system", "content": "You are a helpful assistant."}]
     for m in matches:
-        role = m.group(1).lower()
-        content = m.group(2).strip()
+        role = str(m.group(1).lower())
+        content = str(m.group(2).strip())
         messages.append({"role": role, "content": content})
     if instructions:
         messages.append({"role": "system", "content": instructions})
     return messages
 
-    
-def _build_messages_for_anthropic(matches: Iterator[re.Match[AnyStr]]) -> list[dict[str, str]]:
 
+def _build_messages_for_anthropic(
+    matches: Iterator[re.Match[AnyStr]],
+) -> list[dict[str, str]]:
     class AnthropicRole(str, Enum):
         user = "user"
         assistant = "assistant"
 
+    # Anthropic requires alternating user and assistant messages,
+    # so we group user messages together
     messages = []
     current_user_message = ""
     for m in matches:
-        role = AnthropicRole(m.group(1).lower())
-        content = m.group(2).strip()
+        role = AnthropicRole(m.group(1).lower()).value
+        content = str(m.group(2).strip())
         if role == AnthropicRole.user:
             current_user_message += "\n\n" + content
         else:
             if current_user_message:
-                messages.append({"role": "user", "content": current_user_message})
+                messages.append(
+                    {"role": AnthropicRole.user.value, "content": current_user_message}
+                )
                 current_user_message = ""
-            messages.append({"role": "assistant", "content": content})
+            messages.append({"role": role, "content": content})
     if current_user_message:
-        messages.append({"role": "user", "content": current_user_message})
+        messages.append(
+            {"role": AnthropicRole.user.value, "content": current_user_message}
+        )
     return messages
+
 
 def _stream_chat_completions(
     prompt: str,
     api_key: str,
-    model: str,
-    max_tokens: str,
-    temperature: str,
-    instructions: str | None,
     api_type: APIType,
+    model: str,
+    max_tokens: int,
+    temperature: float,
+    instructions: str | None,
 ) -> Union[openai.Stream, anthropic.Anthropic]:
     """Stream chat completions from the specified API."""
     _ensure_api_type_is_available(api_type)
     _ensure_api_key_is_set(api_key, api_type)
 
-    client = openai.OpenAI(api_key=api_key) if api_type == APIType.openai else anthropic.Anthropic(api_key=api_key)
+    client = (
+        openai.OpenAI(api_key=api_key)
+        if api_type == APIType.openai
+        else anthropic.Anthropic(api_key=api_key)
+    )
 
     pattern = re.compile(
         r"^(User|Assistant):(.+?)(?=\n(?:User|Assistant):|\Z)", re.MULTILINE | re.DOTALL
@@ -109,8 +128,8 @@ def _stream_chat_completions(
             return client.chat.completions.create(
                 model=model,
                 messages=messages,
-                max_tokens=int(max_tokens),
-                temperature=float(temperature),
+                max_tokens=max_tokens,
+                temperature=temperature,
                 stream=True,
             )
         else:
@@ -119,8 +138,8 @@ def _stream_chat_completions(
             return client.messages.create(
                 model=model,
                 messages=messages,
-                max_tokens=int(max_tokens),
-                temperature=float(temperature),
+                max_tokens=max_tokens,
+                temperature=temperature,
                 stream=True,
                 **extra_kwargs,
             )
@@ -128,12 +147,13 @@ def _stream_chat_completions(
         print(f"Error: {error}")
         sys.exit(1)
 
+
 def _print_and_collect_completions(stream, api_type: APIType) -> str:
     """Print and collect completions from the stream."""
     completion_text = ""
     if api_type == APIType.openai:
         for chunk in stream:
-            if chunk.choices[0].delta.content is not None:
+            if chunk.choices[0].delta.content:
                 text = chunk.choices[0].delta.content
                 print(text, end="", flush=True)
                 completion_text += text
@@ -154,9 +174,7 @@ def _write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
     # TODO @anselm: consider removing this
     if jsonlines is None:
         return
-    if not os.path.exists(path):
-        with open(path, "w", encoding="utf-8"):
-            pass  # Create the file
+    path.touch(exist_ok=True)
     try:
         with jsonlines.open(path, mode="a") as writer:
             writer.write({"prompt": prompt, "completion": completion})
@@ -168,10 +186,10 @@ def _write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
 def _stream_chat(
     prompt: str,
     api_key: str,
-    api_type: str,
+    api_type: APIType,
     model: str,
-    max_tokens: str,
-    temperature: str,
+    max_tokens: int,
+    temperature: float,
 ) -> None:
     instruction_sep = "GPTInstructions: "
     if instruction_sep in prompt:
@@ -179,29 +197,34 @@ def _stream_chat(
     else:
         instructions = None
     stream = _stream_chat_completions(
-            prompt, api_key, model, max_tokens, temperature, instructions
-        )
+        prompt, api_key, api_type, model, max_tokens, temperature, instructions
+    )
     completion_text = _print_and_collect_completions(stream, api_type)
     file_name = Path.home() / ".emacs_prompts_completions.jsonl"
     _write_to_jsonl(prompt, completion_text, file_name)
 
+
 def _parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("prompt_file", type=Path, help="The file that contains the prompt.")
+    parser.add_argument(
+        "prompt_file", type=Path, help="The file that contains the prompt."
+    )
     parser.add_argument("api_key", help="The API key to use for the selected API.")
     parser.add_argument(
         "model", help="The model to use (e.g., 'gpt-4', 'claude-3-sonnet-20240229')."
     )
-    parser.add_argument("max_tokens", help="Max tokens value to be used with the API.", type=int)
+    parser.add_argument(
+        "max_tokens", help="Max tokens value to be used with the API.", type=int
+    )
     parser.add_argument(
         "temperature", help="Temperature value to be used with the API.", type=float
     )
     parser.add_argument(
         "api_type",
-        type=str,
+        type=APIType,
         choices=list(APIType),
-        help="Which GPT provider to use."
+        help="Which GPT provider to use.",
     )
     return parser.parse_args()
 
