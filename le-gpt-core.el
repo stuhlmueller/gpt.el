@@ -20,8 +20,7 @@
 (defcustom le-gpt-temperature 0
   "The temperature value used with the chosen model."
   :type 'float
-  :group 'le-gpt
-  )
+  :group 'le-gpt)
 
 (defcustom le-gpt-openai-key "NOT SET"
   "The OpenAI API key to use."
@@ -54,7 +53,11 @@ Use `le-gpt-python-path' and `le-gpt--script-path' to execute the command with n
          (process (make-process
                    :name "le-gpt-process"
                    :buffer output-buffer
-                   :command (list le-gpt-python-path le-gpt--script-path prompt-file api-key le-gpt-model le-gpt-max-tokens le-gpt-temperature api-type-str)
+                   :command (list le-gpt-python-path
+                                  le-gpt--script-path
+                                  prompt-file api-key le-gpt-model
+                                  (number-to-string le-gpt-max-tokens)
+                                  (number-to-string le-gpt-temperature) api-type-str)
                    :connection-type 'pipe))
          (timer (le-gpt--start-timer process)))
     (le-gpt--set-process-sentinel process timer prompt-file)

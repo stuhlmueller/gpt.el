@@ -16,13 +16,10 @@ The generated completion is displayed directly in buffer and can be accepted wit
          (overlay (make-overlay start-point start-point))
          (buffer-content (buffer-substring-no-properties (point-min) start-point))
          (buffer-rest (buffer-substring-no-properties start-point (point-max)))
-         (project-context (when le-gpt-project-file-context
-                            (format le-gpt-project-context-format
-                                    (mapconcat #'identity le-gpt-project-file-context "\n")
-                                    (le-gpt-get-file-contents le-gpt-project-file-context))))
+         (project-context (le-gpt-get-project-context))
          (prompt (concat (when project-context (concat "User:\n\n" project-context))
                          "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " le-gpt-complete-at-point-instructions))
-         (prompt-file (le-gpt-create-prompt-file prompt))
+         (prompt-file (le-gpt--create-prompt-file prompt))
          (insertion-marker (make-marker))
          (process (le-gpt--make-process prompt-file nil)))
     (overlay-put overlay 'face 'le-gpt-completion-preview-face)

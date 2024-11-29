@@ -9,7 +9,7 @@
 ;; URL: https://github.com/AnselmC/le-gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
-;; Package-Requires: ((emacs "24.4"))
+;; Package-Requires: ((emacs "28.1"))
 
 ;;; Commentary:
 

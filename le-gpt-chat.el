@@ -41,7 +41,7 @@ Otherwise, create a temporary buffer. Use the `le-gpt-chat-mode' for the output 
   (with-current-buffer buffer
     (goto-char (point-max))
     (font-lock-fontify-buffer)
-    (le-gpt--make-process (le-gpt-create-prompt-file buffer) buffer)
+    (le-gpt--make-process (le-gpt--create-prompt-file buffer) buffer)
     (message "GPT Pilot: Running command...")
     (font-lock-fontify-buffer)))
 
@@ -128,7 +128,7 @@ Otherwise, use the current region."
   (let* ((le-gpt-buffer (current-buffer))
          (buffer-string (le-gpt--chat-buffer-string le-gpt-buffer))
          (prompt (concat buffer-string "\n\nUser: " le-gpt-chat-generate-buffer-name-instruction))
-         (prompt-file (le-gpt-create-prompt-file prompt)))
+         (prompt-file (le-gpt--create-prompt-file prompt)))
     (with-temp-buffer
       (let ((process (le-gpt--make-process prompt-file (current-buffer))))
         (message "Asking GPT to generate buffer name...")

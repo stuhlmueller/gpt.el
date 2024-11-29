@@ -23,7 +23,7 @@ Ask the user for the transformation and then replace the selected region by the 
                          "<region>" region-content "<region>" "\n"
                          le-gpt-transform-region-instructions "\n"
                          "GPTContext: " buffer-before "\n" buffer-after))
-         (prompt-file (le-gpt-create-prompt-file prompt))
+         (prompt-file (le-gpt--create-prompt-file prompt))
          (insertion-marker (make-marker))
          (process (le-gpt--make-process prompt-file nil)))
     (delete-region start end)
