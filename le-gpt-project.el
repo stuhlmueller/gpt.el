@@ -1,4 +1,10 @@
 ;;; le-gpt-project.el --- Project context functionality for le-gpt.el -*- lexical-binding: t; -*-
+
+;;; Commentary:
+;; 
+
+;;; Code:
+
 (require 'le-gpt-core)
 (require 'project)
 
@@ -16,9 +22,8 @@ First %s is replaced with the list of files, second with their contents.")
   (setq le-gpt--selected-context-files nil)
   (message "Project file context cleared."))
 
-(defun le-gpt-select-project-files ()
+(defun le-gpt-select-project-files-for-context ()
   "Prompt user to select files from project to use as context."
-  (interactive)
   (let* ((all-files (le-gpt--get-project-files))
          (relative-files (mapcar (lambda (f)
                                    (file-relative-name f (project-root (project-current))))
@@ -32,9 +37,8 @@ First %s is replaced with the list of files, second with their contents.")
                (length new-selections)
                (length le-gpt--selected-context-files)))))
 
-(defun le-gpt-deselect-project-files ()
+(defun le-gpt-deselect-project-files-for-context ()
   "Remove multiple files from the current project context."
-  (interactive)
   (if (null le-gpt--selected-context-files)
       (message "No files currently selected")
     (let ((to-remove (le-gpt--read-multiple-files-to-remove le-gpt--selected-context-files)))
@@ -72,7 +76,7 @@ First %s is replaced with the list of files, second with their contents.")
 
 (defun le-gpt--read-multiple-files (files)
   "Let user select multiple FILES using completion.
-Shows currently selected files. Empty input finishes selection."
+Shows currently selected files.  Empty input finishes selection."
   (let ((choices files)
         (selection nil)
         (done nil)
@@ -107,12 +111,12 @@ Shows currently selected files. Empty input finishes selection."
          (projectile-project-root))
     (projectile-project-files))
    (t
-    (error "No project found. Please use project.el or projectile.el"))))
+    (error "No project found.  Please use project.el or projectile.el"))))
 
 
 (defun le-gpt--read-multiple-files-to-remove (files)
   "Let user select multiple FILES to remove using completion.
-Shows files selected for removal. Empty input finishes selection."
+Shows files selected for removal.  Empty input finishes selection."
   (let ((choices files)
         (selection nil)
         (done nil)

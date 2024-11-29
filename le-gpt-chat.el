@@ -1,8 +1,14 @@
 ;;; le-gpt-chat.el --- Chat functionality for le-gpt.el -*- lexical-binding: t; -*-
+
+;;; Commentary:
+;; 
+
+;;; Code:
+
 (require 'le-gpt-core)
 
 (defcustom le-gpt-chat-use-named-buffers t
-  "If non-nil, use named buffers for GPT output. Otherwise, use temporary buffers."
+  "If non-nil, use named buffers for GPT output.  Otherwise, use temporary buffers."
   :type 'boolean
   :group 'le-gpt)
 
@@ -18,9 +24,9 @@
             "*")))
 
 (defun le-gpt--chat-create-output-buffer (command)
-  "Create a buffer to capture the output of the GPT process.
+  "Create a buffer to capture the output of the GPT process for COMMAND.
 If `le-gpt-chat-use-named-buffers' is non-nil, create or get a named buffer.
-Otherwise, create a temporary buffer. Use the `le-gpt-chat-mode' for the output buffer."
+Otherwise, create a temporary buffer.  Use the `le-gpt-chat-mode' for the output buffer."
   (let ((output-buffer
          (if le-gpt-chat-use-named-buffers
              (let ((buffer (get-buffer-create (le-gpt--chat-get-output-buffer-name command))))
@@ -47,8 +53,9 @@ Otherwise, create a temporary buffer. Use the `le-gpt-chat-mode' for the output 
 
 ;; Chat commands (le-gpt-chat-start, le-gpt-chat-follow-up)
 (defun le-gpt-chat-start (&optional all-buffers)
-  "Run user-provided GPT command on region or all visible buffers and print output stream.
-If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible buffers as input.
+  "Start chat with GPT in new buffer.
+If called with a prefix argument (i.e., ALL-BUFFERS is non-nil),
+use all visible buffers as input.
 Otherwise, use the current region."
   (let* ((initial-buffer (current-buffer))
          (command (le-gpt--read-command))
@@ -166,7 +173,7 @@ Otherwise, use the current region."
 
 ;; Dynamic mode creation
 (defun le-gpt--chat-dynamically-define-le-gpt-chat-mode ()
-  "Define `le-gpt-chat-mode` based on whether markdown-mode is available or not."
+  "Define `le-gpt-chat-mode' based on whether `markdown-mode' is available or not."
   (let ((parent-mode (if (fboundp 'markdown-mode)
                          'markdown-mode
                        'text-mode)))

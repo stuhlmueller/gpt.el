@@ -1,4 +1,10 @@
 ;;; le-gpt-core.el --- Core functionality for le-gpt.el -*- lexical-binding: t; -*-
+
+;;; Commentary:
+;; 
+
+;;; Code:
+
 (require 'savehist)
 (require 'project)
 
@@ -33,7 +39,7 @@
   :group 'le-gpt)
 
 (defcustom le-gpt-api-type 'openai
-  "The type of API to use. Either 'openai or 'anthropic."
+  "The type of API to use.  Either 'openai or 'anthropic."
   :type '(choice (const :tag "OpenAI" openai)
                  (const :tag "Anthropic" anthropic))
   :group 'le-gpt)
@@ -158,4 +164,5 @@ INHERIT-INPUT-METHOD have same meaning as in `completing-read'."
       (insert (format "%s\n" cmd)))))
 
 (provide 'le-gpt-core)
-;;; le-gpt-coreel ends here
+
+;;; le-gpt-core.el ends here

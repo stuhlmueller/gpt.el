@@ -47,6 +47,18 @@ With prefix argument ALL-BUFFERS, include all visible buffers as context."
   (interactive)
   (le-gpt-completion-at-point))
 
+;;;###autoload
+(defun le-gpt-select-project-files ()
+  "Prompt user to select files from project to use as context."
+  (interactive)
+  (le-gpt-select-project-files-for-context))
+
+;;;###autoload
+(defun le-gpt-deselect-project-files ()
+  "Remove multiple files from the current project context."
+  (interactive)
+  (le-gpt-deselect-project-files-for-context))
+
 (defgroup le-gpt nil
   "Customization group for GPT Pilot."
   :group 'applications)
