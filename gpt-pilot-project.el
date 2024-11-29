@@ -2,7 +2,7 @@
 (require 'gpt-pilot-core)
 (require 'project)
 
-(defvar gpt-pilot-selected-context-files nil
+(defvar gpt-pilot--selected-context-files nil
   "List of project files whose content should be included as context.")
 
 (defvar gpt-pilot--project-context-format
@@ -13,7 +13,7 @@ First %s is replaced with the list of files, second with their contents.")
 (defun gpt-pilot-clear-selected-context-files ()
   "Clear the list of project files used as context."
   (interactive)
-  (setq gpt-pilot-selected-context-files nil)
+  (setq gpt-pilot--selected-context-files nil)
   (message "Project file context cleared."))
 
 (defun gpt-pilot-select-project-files ()
@@ -24,38 +24,38 @@ First %s is replaced with the list of files, second with their contents.")
                                    (file-relative-name f (project-root (project-current))))
                                  all-files))
          ;; Remove already selected files from choices
-         (available-files (seq-difference relative-files gpt-pilot-selected-context-files)))
+         (available-files (seq-difference relative-files gpt-pilot--selected-context-files)))
     (when-let ((new-selections (gpt-pilot--read-multiple-files available-files)))
-      (setq gpt-pilot-selected-context-files
-            (append gpt-pilot-selected-context-files new-selections))
+      (setq gpt-pilot--selected-context-files
+            (append gpt-pilot--selected-context-files new-selections))
       (message "Added %d files. Total files selected: %d"
                (length new-selections)
-               (length gpt-pilot-selected-context-files)))))
+               (length gpt-pilot--selected-context-files)))))
 
 (defun gpt-pilot-deselect-project-files ()
   "Remove multiple files from the current project context."
   (interactive)
-  (if (null gpt-pilot-selected-context-files)
+  (if (null gpt-pilot--selected-context-files)
       (message "No files currently selected")
-    (let ((to-remove (gpt-pilot--read-multiple-files-to-remove gpt-pilot-selected-context-files)))
-      (setq gpt-pilot-selected-context-files
-            (seq-difference gpt-pilot-selected-context-files to-remove))
+    (let ((to-remove (gpt-pilot--read-multiple-files-to-remove gpt-pilot--selected-context-files)))
+      (setq gpt-pilot--selected-context-files
+            (seq-difference gpt-pilot--selected-context-files to-remove))
       (message "Removed %d files. Remaining files: %d"
                (length to-remove)
-               (length gpt-pilot-selected-context-files)))))
+               (length gpt-pilot--selected-context-files)))))
 
 (defun gpt-pilot-get-project-context ()
   "Get the formatted context string based on the selected project files."
-  (when gpt-pilot-selected-context-files
+  (when gpt-pilot--selected-context-files
     (format gpt-pilot-project-context-format
-            (mapconcat #'identity gpt-pilot-selected-context-files "\n")
+            (mapconcat #'identity gpt-pilot--selected-context-files "\n")
             (gpt-pilot--get-selected-files-contents))))
 
 (defun gpt-pilot--get-selected-files-contents ()
   "Get contents of selected context files as a formatted string."
   (let ((file-contents "")
         (project-root (project-root (project-current))))
-    (dolist (file gpt-pilot-selected-context-files)
+    (dolist (file gpt-pilot--selected-context-files)
       (condition-case err
           (setq file-contents
                 (concat file-contents
@@ -76,7 +76,7 @@ Shows currently selected files. Empty input finishes selection."
   (let ((choices files)
         (selection nil)
         (done nil)
-        (selected-files gpt-pilot-selected-context-files))
+        (selected-files gpt-pilot--selected-context-files))
     (while (not done)
       (let ((selected-help (if selected-files
                                (concat "Currently selected:\n"
@@ -138,5 +138,4 @@ Shows files selected for removal. Empty input finishes selection."
     (nreverse files-to-remove)))
 
 (provide 'gpt-pilot-project)
-
 ;;; gpt-pilot-project.el ends here

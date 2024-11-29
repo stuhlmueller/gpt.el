@@ -20,7 +20,6 @@
 ;; - Completion at point
 ;; - Region transformations
 ;; - Project context awareness
-;; - Chat history management
 
 ;;; Code:
 
@@ -47,6 +46,10 @@ With prefix argument ALL-BUFFERS, include all visible buffers as context."
   "Get completion suggestions from GPT at point."
   (interactive)
   (gpt-pilot-completion-at-point))
+
+(defgroup gpt-pilot nil
+  "Customization group for GPT Pilot."
+  :group 'applications)
 
 (provide 'gpt-pilot)
 

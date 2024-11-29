@@ -1,8 +1,8 @@
 # gpt-pilot.el
 
-gpt-pilot.el is a comprehensive Emacs package for interacting with large language models like GPT-4 and Claude 3.5 Sonnet. It's a feature-rich fork of [gpt.el](https://github.com/stuhlmueller/gpt.el) that adds project awareness, better chat management, and more sophisticated completion capabilities.
+gpt-pilot.el is a comprehensive Emacs package for interacting with large language models like GPT-4 and Claude 3.5 Sonnet. It's a feature-rich fork of [gpt.el](https://github.com/stuhlmueller/gpt.el) that adds project awareness, completion, region transform, and more to come.
 
-The aim is to make sure emacs stays up-to-date with modern GPT support. Essentially CursorAI for emacs.
+The aim is to make sure emacs stays up-to-date with modern GPT support. Essentially aiming for a CursorAI for emacs.
 
 ## Features
 
@@ -21,6 +21,7 @@ The aim is to make sure emacs stays up-to-date with modern GPT support. Essentia
 
 
 
+
 ## Installation
 
 ### Prerequisites
@@ -34,17 +35,17 @@ You don't need to install all of them, but minimally `openai` or `anthropic`.
 
 You'll also need API keys from [OpenAI](https://beta.openai.com/) and/or [Anthropic](https://console.anthropic.com).
 
-### From MELPA
-```elisp
-(require 'package)
-(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
-(package-install 'gpt-pilot)
-```
-
-### Using use-package
+### Using straight with use-package
 ```elisp
 (use-package gpt-pilot
-  :ensure t
+  :straight (gpt-pilot :type git
+                       :host github
+                       :repo "AnselmC/gpt-pilot.el")
+  :bind (("M-C-g" . gpt-pilot-chat)
+         ("M-C-n" . gpt-pilot-complete-at-point)
+         ("M-C-t" . gpt-pilot-transform-region)
+         ("M-C-s" . gpt-pilot-select-project-files)
+         ("M-C-d" . gpt-pilot-deselect-project-files)))
   :config
   ;; you need to set at least one of the following
   (setq gpt-pilot-openai-key "your-openai-key-here")
@@ -68,6 +69,7 @@ Basic configuration:
 ;; API Selection (default is 'openai)
 (setq gpt-pilot-api-type 'anthropic)
 ```
+See all available customizations via `M-x customize-group RET gpt-pilot`.
 
 ## Usage
 
@@ -83,6 +85,14 @@ Key bindings in chat buffers:
 - `C-c C-p`: Toggle prefix visibility
 - `C-c C-b`: Copy code block at point
 - `C-c C-t`: Generate descriptive buffer name from its content
+
+If you provide a prefix argument, all visible buffers will be used as additional context.
+
+If you've set `gpt-pilot-chat-use-named-buffers` to `t`, then you can have GPT create a buffer name based on the conversation:
+
+``` elisp
+M-x gpt-pilot-chat-generate-buffer-name
+```
 
 ### Completion at Point
 
@@ -110,24 +120,18 @@ M-x gpt-pilot-transform-region
 ```
 
 
-### Suggested Key Bindings
-
-```elisp
-(global-set-key (kbd "M-C-g") 'gpt-pilot-chat)
-(global-set-key (kbd "M-C-n") 'gpt-pilot-complete-at-point)
-(global-set-key (kbd "M-C-t") 'gpt-pilot-transform-region)
-(global-set-key (kbd "M-C-s") 'gpt-pilot-select-project-files)
-```
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues and pull requests on GitHub.
 
 ### Feature roadmap
 
+ - [ ] Add testing with buttercup
+ - [ ] Add testing with pytest
+ - [ ] Create github actions
+ - [ ] Add package to Melpa
  - [ ] Settings page
- - [ ] Remove individual context files
- - [ ] Add all files of current project as context
+ - [ ] Add all files of current project as context (?)
  - [ ] Ability to let GPT decide which context files it needs
 
 ## License
