@@ -36,11 +36,11 @@ The generated completion is displayed directly in buffer and can be accepted wit
                                     (set-marker insertion-marker (point)))))
     ;; Wait for user confirmation
     (let ((response (read-key (format "Press RET to accept completion, any other key to cancel"))))
+      (delete-overlay overlay)
       (if (eq response ?\r)
-          (delete-overlay overlay)  ; Remove overlay if accepted
-        (delete-region start-point (point))  ; Remove text if canceled
-        (delete-overlay overlay)
-        (message "Completion canceled")))))
+          (insert "\n") ;; add a newline for good measure
+        (delete-region start-point (point))))))  ; Remove text if canceled
+
 
 (provide 'gpt-pilot-completion)
 ;;; gpt-pilot-completion.el ends here
