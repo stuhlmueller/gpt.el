@@ -1,4 +1,4 @@
-;;; gpt-pilot.el --- Emacs on steroids with GPT -*- lexical-binding: t; -*-
+;;; le-gpt.el --- Emacs on steroids with GPT -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2022-2024 Andreas Stuhlmueller, 2024- Anselm Coogan
 
@@ -6,7 +6,7 @@
 ;; Maintainer: Anselm Coogan <anselm.coogan@gmail.com>
 ;; Version: 1.0
 ;; Keywords: openai, anthropic, claude, language, copilot, convenience, tools
-;; URL: https://github.com/AnselmC/gpt-pilot.el
+;; URL: https://github.com/AnselmC/le-gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
 ;; Package-Requires: ((emacs "24.4"))
@@ -23,34 +23,34 @@
 
 ;;; Code:
 
-(require 'gpt-pilot-core)
-(require 'gpt-pilot-chat)
-(require 'gpt-pilot-transform)
-(require 'gpt-pilot-project)
+(require 'le-gpt-core)
+(require 'le-gpt-chat)
+(require 'le-gpt-transform)
+(require 'le-gpt-project)
 
 ;;;###autoload
-(defun gpt-pilot-chat (&optional all-buffers)
+(defun le-gpt-chat (&optional all-buffers)
   "Start a GPT chat session.
 With prefix argument ALL-BUFFERS, include all visible buffers as context."
   (interactive "P")
-  (gpt-pilot-chat-start all-buffers))
+  (le-gpt-chat-start all-buffers))
 
 ;;;###autoload
-(defun gpt-pilot-transform-region ()
+(defun le-gpt-transform-region ()
   "Transform the selected region using GPT."
   (interactive)
-  (gpt-pilot-transform-region-with-prompt))
+  (le-gpt-transform-region-with-prompt))
 
 ;;;###autoload
-(defun gpt-pilot-complete-at-point ()
+(defun le-gpt-complete-at-point ()
   "Get completion suggestions from GPT at point."
   (interactive)
-  (gpt-pilot-completion-at-point))
+  (le-gpt-completion-at-point))
 
-(defgroup gpt-pilot nil
+(defgroup le-gpt nil
   "Customization group for GPT Pilot."
   :group 'applications)
 
-(provide 'gpt-pilot)
+(provide 'le-gpt)
 
-;;; gpt-pilot.el ends here
+;;; le-gpt.el ends here

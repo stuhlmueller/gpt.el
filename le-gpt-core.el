@@ -1,66 +1,66 @@
-;;; gpt-pilot-core.el --- Core functionality for gpt-pilot.el -*- lexical-binding: t; -*-
+;;; le-gpt-core.el --- Core functionality for le-gpt.el -*- lexical-binding: t; -*-
 (require 'savehist)
 (require 'project)
 
 ;; Core configuration variables
-(defvar gpt-pilot--script-path
-  (expand-file-name "gpt-pilot.py" (file-name-directory (or load-file-name buffer-file-name)))
+(defvar le-gpt--script-path
+  (expand-file-name "le-gpt.py" (file-name-directory (or load-file-name buffer-file-name)))
   "The path to the Python script used by gpt.el.")
 
-(defcustom gpt-pilot-model "gpt-4o"
+(defcustom le-gpt-model "gpt-4o"
   "The model to use (e.g., 'gpt-4', 'claude-3-5-sonnet-20240620')."
   :type 'string
-  :group 'gpt-pilot)
+  :group 'le-gpt)
 
-(defcustom gpt-pilot-max-tokens 2000
+(defcustom le-gpt-max-tokens 2000
   "The max_tokens value used with the chosen model."
   :type 'integer
-  :group 'gpt-pilot)
+  :group 'le-gpt)
 
-(defcustom gpt-pilot-temperature 0
+(defcustom le-gpt-temperature 0
   "The temperature value used with the chosen model."
   :type 'float
-  :group 'gpt-pilot
+  :group 'le-gpt
   )
 
-(defcustom gpt-pilot-openai-key "NOT SET"
+(defcustom le-gpt-openai-key "NOT SET"
   "The OpenAI API key to use."
   :type 'string
-  :group 'gpt-pilot)
+  :group 'le-gpt)
 
-(defcustom gpt-pilot-anthropic-key "NOT SET"
+(defcustom le-gpt-anthropic-key "NOT SET"
   "The Anthropic API key to use."
   :type 'string
-  :group 'gpt-pilot)
+  :group 'le-gpt)
 
-(defcustom gpt-pilot-api-type 'openai
+(defcustom le-gpt-api-type 'openai
   "The type of API to use. Either 'openai or 'anthropic."
   :type '(choice (const :tag "OpenAI" openai)
                  (const :tag "Anthropic" anthropic))
-  :group 'gpt-pilot)
+  :group 'le-gpt)
 
-(defcustom gpt-pilot-python-path "python"
+(defcustom le-gpt-python-path "python"
   "The path to your python executable."
   :type 'string
-  :group 'gpt-pilot)
+  :group 'le-gpt)
 
 
 ;; Core process management functions
-(defun gpt-pilot--make-process (prompt-file output-buffer)
+(defun le-gpt--make-process (prompt-file output-buffer)
   "Create a GPT process with PROMPT-FILE, and OUTPUT-BUFFER.
-Use `gpt-pilot-python-path' and `gpt-pilot--script-path' to execute the command with necessary arguments."
-  (let* ((api-key (if (eq gpt-pilot-api-type 'openai) gpt-pilot-openai-key gpt-pilot-anthropic-key))
-         (api-type-str (symbol-name gpt-pilot-api-type))
+Use `le-gpt-python-path' and `le-gpt--script-path' to execute the command with necessary arguments."
+  (let* ((api-key (if (eq le-gpt-api-type 'openai) le-gpt-openai-key le-gpt-anthropic-key))
+         (api-type-str (symbol-name le-gpt-api-type))
          (process (make-process
-                   :name "gpt-pilot-process"
+                   :name "le-gpt-process"
                    :buffer output-buffer
-                   :command (list gpt-pilot-python-path gpt-pilot--script-path prompt-file api-key gpt-pilot-model gpt-pilot-max-tokens gpt-pilot-temperature api-type-str)
+                   :command (list le-gpt-python-path le-gpt--script-path prompt-file api-key le-gpt-model le-gpt-max-tokens le-gpt-temperature api-type-str)
                    :connection-type 'pipe))
-         (timer (gpt-pilot--start-timer process)))
-    (gpt-pilot--set-process-sentinel process timer prompt-file)
+         (timer (le-gpt--start-timer process)))
+    (le-gpt--set-process-sentinel process timer prompt-file)
     process))
 
-(defun gpt-pilot--start-timer (process)
+(defun le-gpt--start-timer (process)
   "Set timer to run every second and print message if PROCESS is still running."
   (run-with-timer 1 1
                   (lambda (timer-object)
@@ -69,7 +69,7 @@ Use `gpt-pilot-python-path' and `gpt-pilot--script-path' to execute the command 
                       (message "GPT Pilot: Running...")))
                   process))
 
-(defun gpt-pilot--set-process-sentinel (process timer prompt-file)
+(defun le-gpt--set-process-sentinel (process timer prompt-file)
   "Set a function to run when the PROCESS finishes or fails.
 TIMER is the timer object that cancels the process after a timeout.
 PROMPT-FILE is the temporary file containing the prompt."
@@ -85,9 +85,9 @@ PROMPT-FILE is the temporary file containing the prompt."
          (message "GPT Pilot: Failed: %s" status))))))
 
 ;; Core utility functions
-(defun gpt-pilot--create-prompt-file (input)
+(defun le-gpt--create-prompt-file (input)
   "Create a temporary file containing the prompt string from INPUT."
-  (let ((temp-file (make-temp-file "gpt-pilot-prompt"))
+  (let ((temp-file (make-temp-file "le-gpt-prompt"))
         (content (if (bufferp input)
                      (with-current-buffer input (buffer-string))
                    input)))
@@ -97,7 +97,7 @@ PROMPT-FILE is the temporary file containing the prompt."
     temp-file))
 
 
-(defun gpt-pilot--completing-read-space (prompt collection &optional predicate require-match initial-input hist def inherit-input-method)
+(defun le-gpt--completing-read-space (prompt collection &optional predicate require-match initial-input hist def inherit-input-method)
   "Read string in minibuffer with completion, treating space literally.
 Arguments PROMPT COLLECTION PREDICATE REQUIRE-MATCH INITIAL-INPUT HIST DEF
 INHERIT-INPUT-METHOD have same meaning as in `completing-read'."
@@ -108,51 +108,51 @@ INHERIT-INPUT-METHOD have same meaning as in `completing-read'."
     (completing-read prompt collection predicate require-match initial-input hist def inherit-input-method)))
 
 ;; Model switching functionality
-(defun gpt-pilot-switch-model ()
+(defun le-gpt-switch-model ()
   "Switch between OpenAI and Anthropic models."
   (interactive)
   (let* ((models '(("GPT-4o" . (openai . "gpt-4o"))
                    ("Claude 3.5 Sonnet" . (anthropic . "claude-3-5-sonnet-20240620"))))
          (choice (completing-read "Choose model: " (mapcar #'car models) nil t))
          (model-info (cdr (assoc choice models))))
-    (setq gpt-pilot-api-type (car model-info)
-          gpt-pilot-model (cdr model-info))
+    (setq le-gpt-api-type (car model-info)
+          le-gpt-model (cdr model-info))
     (message "Switched to %s model: %s" (car model-info) (cdr model-info))))
 
 ;; Command reading
-(defun gpt-pilot--read-command ()
+(defun le-gpt--read-command ()
   "Read a GPT command from the user with history and completion."
-  (let ((cmd (gpt-pilot--completing-read-space "Command: " gpt-pilot--command-history nil nil nil 'gpt-pilot--command-history)))
+  (let ((cmd (le-gpt--completing-read-space "Command: " le-gpt--command-history nil nil nil 'le-gpt--command-history)))
     (if (string-equal cmd "n/a")
         ""
       (string-trim cmd))))
 
 ;; Command history management
-(defvar gpt-pilot--command-history nil
+(defvar le-gpt--command-history nil
   "A list of GPT commands that have been entered by the user.")
 
-(add-to-list 'savehist-additional-variables 'gpt-pilot--command-history)
+(add-to-list 'savehist-additional-variables 'le-gpt--command-history)
 
-(defun gpt-pilot-display-command-history ()
-  "Display the `gpt-pilot--command-history' in a buffer."
+(defun le-gpt-display-command-history ()
+  "Display the `le-gpt--command-history' in a buffer."
   (interactive)
   (with-current-buffer (get-buffer-create "*GPT Command History*")
     (erase-buffer)
-    (insert (mapconcat #'identity gpt-pilot--command-history "\n"))
+    (insert (mapconcat #'identity le-gpt--command-history "\n"))
     (switch-to-buffer (current-buffer))))
 
-(defun gpt-pilot-clear-command-history ()
-  "Clear the `gpt-pilot--command-history' list."
+(defun le-gpt-clear-command-history ()
+  "Clear the `le-gpt--command-history' list."
   (interactive)
-  (setq gpt-pilot--command-history nil)
+  (setq le-gpt--command-history nil)
   (message "GPT command history cleared."))
 
-(defun gpt-pilot-export-command-history (file)
-  "Export the `gpt-pilot--command-history' to FILE."
-  (interactive "Export gpt-pilot--command-history to file: ")
+(defun le-gpt-export-command-history (file)
+  "Export the `le-gpt--command-history' to FILE."
+  (interactive "Export le-gpt--command-history to file: ")
   (with-temp-file file
-    (dolist (cmd gpt-pilot--command-history)
+    (dolist (cmd le-gpt--command-history)
       (insert (format "%s\n" cmd)))))
 
-(provide 'gpt-pilot-core)
-;;; gpt-pilot-coreel ends here
+(provide 'le-gpt-core)
+;;; le-gpt-coreel ends here
