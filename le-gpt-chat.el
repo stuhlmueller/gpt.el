@@ -41,7 +41,7 @@ Otherwise, create a temporary buffer. Use the `le-gpt-chat-mode' for the output 
   (with-current-buffer buffer
     (goto-char (point-max))
     (font-lock-fontify-buffer)
-    (le-gpt-make-process (le-gpt-create-prompt-file buffer) buffer)
+    (le-gpt--make-process (le-gpt-create-prompt-file buffer) buffer)
     (message "GPT Pilot: Running command...")
     (font-lock-fontify-buffer)))
 
@@ -51,7 +51,7 @@ Otherwise, create a temporary buffer. Use the `le-gpt-chat-mode' for the output 
 If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible buffers as input.
 Otherwise, use the current region."
   (let* ((initial-buffer (current-buffer))
-         (command (le-gpt-read-command))
+         (command (le-gpt--read-command))
          (output-buffer (le-gpt--chat-create-output-buffer command))
          (input (if all-buffers
                     (le-gpt-get-visible-buffers-content)
@@ -76,7 +76,7 @@ Otherwise, use the current region."
   (interactive)
   (unless (eq major-mode 'le-gpt-chat-mode)
     (user-error "Not in a gpt output buffer"))
-  (let ((command (le-gpt-read-command)))
+  (let ((command (le-gpt--read-command)))
     (goto-char (point-max))
     (insert "\n\n")
     (le-gpt--chat-insert-command command)
@@ -130,7 +130,7 @@ Otherwise, use the current region."
          (prompt (concat buffer-string "\n\nUser: " le-gpt-chat-generate-buffer-name-instruction))
          (prompt-file (le-gpt-create-prompt-file prompt)))
     (with-temp-buffer
-      (let ((process (le-gpt-make-process prompt-file (current-buffer))))
+      (let ((process (le-gpt--make-process prompt-file (current-buffer))))
         (message "Asking GPT to generate buffer name...")
         (while (process-live-p process)
           (accept-process-output process))

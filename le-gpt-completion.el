@@ -24,7 +24,7 @@ The generated completion is displayed directly in buffer and can be accepted wit
                          "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " le-gpt-complete-at-point-instructions))
          (prompt-file (le-gpt-create-prompt-file prompt))
          (insertion-marker (make-marker))
-         (process (le-gpt-make-process prompt-file nil)))
+         (process (le-gpt--make-process prompt-file nil)))
     (overlay-put overlay 'face 'le-gpt-completion-preview-face)
     (set-marker insertion-marker (point))
     (set-process-filter process (lambda (proc string)

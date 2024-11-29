@@ -16,7 +16,7 @@ Ask the user for the transformation and then replace the selected region by the 
          (region-content (buffer-substring-no-properties start end))
          (buffer-before (buffer-substring-no-properties (point-min) start))
          (buffer-after (buffer-substring-no-properties end (point-max)))
-         (command (le-gpt-read-command))
+         (command (le-gpt--read-command))
          (project-context (le-gpt-get-project-context))
          (prompt (concat (when project-context (concat "User:\n\n" project-context))
                          "User: " command "\n"
@@ -25,7 +25,7 @@ Ask the user for the transformation and then replace the selected region by the 
                          "GPTContext: " buffer-before "\n" buffer-after))
          (prompt-file (le-gpt-create-prompt-file prompt))
          (insertion-marker (make-marker))
-         (process (le-gpt-make-process prompt-file nil)))
+         (process (le-gpt--make-process prompt-file nil)))
     (delete-region start end)
     (set-marker insertion-marker (point))
     (set-process-filter process (lambda (proc string)
