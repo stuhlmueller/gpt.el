@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="resources/logo.png" width="20%" alt="weird-generated-logo"/>
+</p>
+
 # le-gpt.el
 
 le-gpt.el is a comprehensive Emacs package for interacting with large language models like GPT-4 and Claude 3.5 Sonnet. It's a feature-rich fork of [gpt.el](https://github.com/stuhlmueller/gpt.el) that adds project awareness, completion, region transform, and more to come.
