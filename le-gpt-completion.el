@@ -6,8 +6,10 @@
   '((t :inherit current :underline t :weight bold))
   "Face for previewing code completions.")
 
-(defvar le-gpt-complete-at-point-instructions "Provide a short completion to be inserted at <cursor>. Only provide the completion, no commentary, no quotes. Your response will directly be inserted."
-  "The instructions to give gpt so that it performs completion at point without any noise.")
+(defcustom le-gpt-complete-at-point-instructions "Provide a short completion to be inserted at <cursor>. Only provide the completion, no commentary, no quotes, no code blocks. Your response will directly be inserted."
+  "The instructions to give gpt so that it performs completion at point without any noise."
+  :type 'string
+  :group 'le-gpt)
 
 (defun le-gpt-completion-at-point ()
   "Get completion from gpt based on buffer content up to point.

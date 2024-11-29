@@ -154,7 +154,7 @@ Otherwise, use the current region."
   "Face for the output of the GPT commands.")
 
 ;; Font-lock configuration
-(defvar le-gpt-chat-font-lock-keywords
+(defvar le-gpt--chat-font-lock-keywords
   '(("^\\(User:\\s-*\\)\\(.*\\)$"
      (1 '(face nil invisible le-gpt-chat-prefix))
      (2 'le-gpt-chat-input-face))
@@ -180,9 +180,9 @@ Otherwise, use the current region."
             (progn
               (setq markdown-fontify-code-blocks-natively t)
               (setq font-lock-defaults
-                    (list (append markdown-mode-font-lock-keywords le-gpt-chat-font-lock-keywords))))
+                    (list (append markdown-mode-font-lock-keywords le-gpt--chat-font-lock-keywords))))
           (progn
-            (setq-local font-lock-defaults '(le-gpt-chat-font-lock-keywords))
+            (setq-local font-lock-defaults '(le-gpt--chat-font-lock-keywords))
             (font-lock-mode 1)
             (font-lock-fontify-buffer)))
         (add-to-invisibility-spec 'le-gpt-chat-prefix)))))

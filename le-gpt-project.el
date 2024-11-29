@@ -47,7 +47,7 @@ First %s is replaced with the list of files, second with their contents.")
 (defun le-gpt-get-project-context ()
   "Get the formatted context string based on the selected project files."
   (when le-gpt--selected-context-files
-    (format le-gpt-project-context-format
+    (format le-gpt--project-context-format
             (mapconcat #'identity le-gpt--selected-context-files "\n")
             (le-gpt--get-selected-files-contents))))
 

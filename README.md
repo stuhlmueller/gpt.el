@@ -10,19 +10,18 @@ The aim is to make sure emacs stays up-to-date with modern GPT support. Essentia
 
 ## Features
 
-| Chat Interface                                         | Completion at point                                                              |
-|--------------------------------------------------------|----------------------------------------------------------------------------------|
-| ![le-gpt-chat-demo](./resources/le-gpt-chat.gif) | ![le-gpt-complete-at-point-demo](./resources/le-gpt-complete-at-point.gif) |
-| Create and manage multiple chat sessions               | Let GPT complete what you're currently writing                                   |
-| `M-x le-gpt-chat`                                        | `M-x le-gpt-complete-at-point`                                                                                  |
+| Chat Interface                                                                   | Completion at point                                                        |
+|----------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| ![le-gpt-chat-demo](./resources/le-gpt-chat.gif)                                 | ![le-gpt-complete-at-point-demo](./resources/le-gpt-complete-at-point.gif) |
+| Create and manage multiple chat sessions                                         | Let GPT complete what you're currently writing                             |
+| `M-x le-gpt-chat` & `C-c` to follow-up & `C-t` to generate buffer name using GPT | `M-x le-gpt-complete-at-point`                                             |
 
 
-| Project Context                                                                   | Region Transformation                                                   |
-|-----------------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| ![le-gpt-with-context-demo](./resources/le-gpt-with-context.gif)            | ![le-gpt-transform-region-demo](./resources/le-gpt-transform.gif) |
-| Select files from your project that GPT should use as context                     | Select a region you want to GPT to transform                            |
-| `M-x le-gpt-select-project-files` & `M-x le-gpt-clear-project-file-context` | `M-x le-gpt-transform-region`                                        |
-
+| Project Context                                                         | Region Transformation                                             |
+|-------------------------------------------------------------------------|-------------------------------------------------------------------|
+| ![le-gpt-with-context-demo](./resources/le-gpt-project-context.gif)     | ![le-gpt-transform-region-demo](./resources/le-gpt-transform.gif) |
+| Select files from your project that GPT should use as context           | Select a region you want GPT to transform                         |
+| `M-x le-gpt-select-project-files` & `M-x le-gpt-deselect-project-files` | `M-x le-gpt-transform-region`                                     |
 
 
 
@@ -58,8 +57,9 @@ You'll also need API keys from [OpenAI](https://beta.openai.com/) and/or [Anthro
 
 ## Configuration
 
-Basic configuration:
+See all available customizations via `M-x customize-group RET le-gpt`.
 
+Basic configuration:
 ```elisp
 ;; API Keys
 (setq le-gpt-openai-key "sk-...")
@@ -73,7 +73,6 @@ Basic configuration:
 ;; API Selection (default is 'openai)
 (setq le-gpt-api-type 'anthropic)
 ```
-See all available customizations via `M-x customize-group RET le-gpt`.
 
 ## Usage
 
@@ -112,13 +111,20 @@ Set project files as context:
 ```elisp
 M-x le-gpt-select-project-files
 ```
-
-Note that you'll need to run `le-gpt-clear-project-file-context` to remove the files from subsequent requests.
 The context will be used by chat, completion and region transforms.
+
+*Note that these files are persisted between multiple calls.*
+
+To deselect files:
+```elisp
+M-x le-gpt-deselect-project-files
+```
+Or, to clear entire selection `M-x le-gpt-clear-project-file-context`.
+
 
 ### Region Transformation
 
-Transform selected text:
+Transform selection via:
 ```elisp
 M-x le-gpt-transform-region
 ```
