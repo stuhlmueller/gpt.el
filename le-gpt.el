@@ -26,6 +26,7 @@
 (require 'le-gpt-core)
 (require 'le-gpt-chat)
 (require 'le-gpt-transform)
+(require 'le-gpt-completion)
 (require 'le-gpt-project)
 
 ;;;###autoload
