@@ -13,13 +13,13 @@
   "Face for previewing code completions.")
 
 (defcustom le-gpt-complete-at-point-instructions "Provide a short completion to be inserted at <cursor>. Only provide the completion, no commentary, no quotes, no code blocks. Your response will directly be inserted."
-  "The instructions to give gpt so that it performs completion at point without any noise."
+  "The instructions for gpt to perform completion at point without any noise."
   :type 'string
   :group 'le-gpt)
 
 (defun le-gpt-completion-at-point ()
   "Get completion from gpt based on buffer content up to point.
-The generated completion is displayed directly in buffer and can be accepted with RET."
+The generated completion is displayed directly in buffer. Accept with RET."
   (let* ((start-point (point))
          (overlay (make-overlay start-point start-point))
          (buffer-content (buffer-substring-no-properties (point-min) start-point))
@@ -33,6 +33,7 @@ The generated completion is displayed directly in buffer and can be accepted wit
     (overlay-put overlay 'face 'le-gpt-completion-preview-face)
     (set-marker insertion-marker (point))
     (set-process-filter process (lambda (proc string)
+                                  (ignore proc)
                                   (save-excursion
                                     (goto-char insertion-marker)
                                     (insert string)

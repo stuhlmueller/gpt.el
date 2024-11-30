@@ -16,7 +16,7 @@
 
 (defun le-gpt-transform-region-with-prompt ()
   "Transform the selected region.
-Ask the user for the transformation and then replace the selected region by the response."
+Ask user for the transformation command and replace region with response."
   (let* ((start (region-beginning))
          (end (region-end))
          (region-content (buffer-substring-no-properties start end))
@@ -35,6 +35,7 @@ Ask the user for the transformation and then replace the selected region by the 
     (delete-region start end)
     (set-marker insertion-marker (point))
     (set-process-filter process (lambda (proc string)
+                                  (ignore proc)
                                   (save-excursion
                                     (goto-char insertion-marker)
                                     (insert string)

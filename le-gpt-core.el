@@ -14,7 +14,7 @@
   "The path to the Python script used by gpt.el.")
 
 (defcustom le-gpt-model "gpt-4o"
-  "The model to use (e.g., 'gpt-4', 'claude-3-5-sonnet-20240620')."
+  "The model to use (e.g., `gpt-4', `claude-3-5-sonnet-20240620')."
   :type 'string
   :group 'le-gpt)
 
@@ -39,7 +39,7 @@
   :group 'le-gpt)
 
 (defcustom le-gpt-api-type 'openai
-  "The type of API to use.  Either 'openai or 'anthropic."
+  "The type of API to use.  Either \='openai or \='anthropic."
   :type '(choice (const :tag "OpenAI" openai)
                  (const :tag "Anthropic" anthropic))
   :group 'le-gpt)
@@ -53,7 +53,8 @@
 ;; Core process management functions
 (defun le-gpt--make-process (prompt-file output-buffer)
   "Create a GPT process with PROMPT-FILE, and OUTPUT-BUFFER.
-Use `le-gpt-python-path' and `le-gpt--script-path' to execute the command with necessary arguments."
+Use `le-gpt-python-path' and `le-gpt--script-path' to execute
+the command with necessary arguments."
   (let* ((api-key (if (eq le-gpt-api-type 'openai) le-gpt-openai-key le-gpt-anthropic-key))
          (api-type-str (symbol-name le-gpt-api-type))
          (process (make-process

@@ -1,18 +1,49 @@
 ;;; le-gpt-chat.el --- Chat functionality for le-gpt.el -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; 
+;;
 
 ;;; Code:
 
 (require 'le-gpt-core)
+(require 'le-gpt-project)
 
 (defcustom le-gpt-chat-use-named-buffers t
   "If non-nil, use named buffers for GPT output.  Otherwise, use temporary buffers."
   :type 'boolean
   :group 'le-gpt)
 
-;; Chat buffer creation and management
+(defcustom le-gpt-chat-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Return a single title, nothing else. No quotes."
+  "The instruction given to GPT to generate a buffer name."
+  :type 'string
+  :group 'le-gpt)
+
+(defcustom le-gpt-chat-buffer-name-length 60
+  "Maximum character length of the GPT buffer name title."
+  :type 'integer
+  :group 'le-gpt)
+
+(defvar le-gpt--chat-buffer-counter 0
+  "Counter to ensure unique buffer names for GPT output buffers.")
+
+(defface le-gpt-chat-input-face
+  '((t :inherit comint-highlight-prompt))
+  "Face for the input of the GPT commands.")
+
+(defface le-gpt-chat-output-face
+  '((t :inherit comint-highlight-prompt))
+  "Face for the output of the GPT commands.")
+
+(defvar le-gpt--chat-font-lock-keywords
+  '(("^\\(User:\\s-*\\)\\(.*\\)$"
+     (1 '(face nil invisible le-gpt-chat-prefix))
+     (2 'le-gpt-chat-input-face))
+    ("^\\(Assistant:\\s-*\\)\\(.*\\)$"
+     (1 '(face nil invisible le-gpt-chat-prefix))
+     (2 'le-gpt-chat-output-face))
+    ("```\\([\0-\377[:nonascii:]]*?\\)```"
+     (1 'font-lock-constant-face))))
+
 (defun le-gpt--chat-get-output-buffer-name (command)
   "Get the output buffer name for a given COMMAND."
   (let* ((truncated-command (substring command 0 (min le-gpt-chat-buffer-name-length (length command))))
@@ -26,7 +57,8 @@
 (defun le-gpt--chat-create-output-buffer (command)
   "Create a buffer to capture the output of the GPT process for COMMAND.
 If `le-gpt-chat-use-named-buffers' is non-nil, create or get a named buffer.
-Otherwise, create a temporary buffer.  Use the `le-gpt-chat-mode' for the output buffer."
+Otherwise, create a temporary buffer.
+Use the `le-gpt-chat-mode' for the output buffer."
   (let ((output-buffer
          (if le-gpt-chat-use-named-buffers
              (let ((buffer (get-buffer-create (le-gpt--chat-get-output-buffer-name command))))
@@ -43,7 +75,8 @@ Otherwise, create a temporary buffer.  Use the `le-gpt-chat-mode' for the output
     (insert (format template command))))
 
 (defun le-gpt--chat-run-buffer (buffer)
-  "Run GPT command with BUFFER text as input and append output stream to output-buffer."
+  "Run GPT command in BUFFER.
+Provide text in buffer as input & append stream to BUFFER."
   (with-current-buffer buffer
     (goto-char (point-max))
     (font-lock-update)
@@ -51,17 +84,29 @@ Otherwise, create a temporary buffer.  Use the `le-gpt-chat-mode' for the output
     (message "GPT Pilot: Running command...")
     (font-lock-update)))
 
+(defun le-gpt--chat-get-visible-buffers-content ()
+  "Get content, buffer name, and file name (optional) of all visible buffers."
+  (let ((visible-buffers (mapcar 'window-buffer (window-list)))
+        contents)
+    (dolist (buffer visible-buffers contents)
+      (with-current-buffer buffer
+        (push (format "Buffer Name: %s\nFile Name: %s\nContent:\n%s"
+                      (buffer-name)
+                      (or (buffer-file-name) "N/A")
+                      (buffer-substring-no-properties (point-min) (point-max)))
+              contents)))
+    (mapconcat 'identity (nreverse contents) "\n\n")))
+
 ;; Chat commands (le-gpt-chat-start, le-gpt-chat-follow-up)
 (defun le-gpt-chat-start (&optional all-buffers)
   "Start chat with GPT in new buffer.
 If called with a prefix argument (i.e., ALL-BUFFERS is non-nil),
 use all visible buffers as input.
 Otherwise, use the current region."
-  (let* ((initial-buffer (current-buffer))
-         (command (le-gpt--read-command))
+  (let* ((command (le-gpt--read-command))
          (output-buffer (le-gpt--chat-create-output-buffer command))
          (input (if all-buffers
-                    (le-gpt-get-visible-buffers-content)
+                    (le-gpt--chat-get-visible-buffers-content)
                   (when (use-region-p)
                     (buffer-substring-no-properties (region-beginning) (region-end)))))
          (project-context (le-gpt-get-project-context)))
@@ -76,7 +121,7 @@ Otherwise, use the current region."
 (defun le-gpt-chat-all-buffers ()
   "Run user-provided GPT command on all visible buffers and print output stream."
   (interactive)
-  (le-gpt-chat t))
+  (le-gpt-chat-start t))
 
 (defun le-gpt-chat-follow-up ()
   "Run a follow-up GPT command on the output buffer and append the output stream."
@@ -114,18 +159,6 @@ Otherwise, use the current region."
         (message "Code block copied to clipboard.")))))
 
 ;; Buffer naming and management
-(defcustom le-gpt-chat-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Return a single title, nothing else. No quotes."
-  "The instruction given to GPT to generate a buffer name."
-  :type 'string
-  :group 'le-gpt)
-
-(defcustom le-gpt-chat-buffer-name-length 60
-  "Maximum character length of the GPT buffer name title."
-  :type 'integer
-  :group 'le-gpt)
-
-(defvar le-gpt--chat-buffer-counter 0
-  "Counter to ensure unique buffer names for GPT output buffers.")
 
 (defun le-gpt-chat-generate-buffer-name ()
   "Update the buffer name by asking GPT to create a title for it."
@@ -150,26 +183,6 @@ Otherwise, use the current region."
   (with-current-buffer buffer
     (buffer-string)))
 
-;; Chat UI
-;; Face definitions
-(defface le-gpt-chat-input-face
-  '((t :inherit comint-highlight-prompt))
-  "Face for the input of the GPT commands.")
-
-(defface le-gpt-chat-output-face
-  '((t :inherit comint-highlight-prompt))
-  "Face for the output of the GPT commands.")
-
-;; Font-lock configuration
-(defvar le-gpt--chat-font-lock-keywords
-  '(("^\\(User:\\s-*\\)\\(.*\\)$"
-     (1 '(face nil invisible le-gpt-chat-prefix))
-     (2 'le-gpt-chat-input-face))
-    ("^\\(Assistant:\\s-*\\)\\(.*\\)$"
-     (1 '(face nil invisible le-gpt-chat-prefix))
-     (2 'le-gpt-chat-output-face))
-    ("```\\([\0-\377[:nonascii:]]*?\\)```"
-     (1 'font-lock-constant-face))))
 
 ;; Dynamic mode creation
 (defun le-gpt--chat-dynamically-define-le-gpt-chat-mode ()
