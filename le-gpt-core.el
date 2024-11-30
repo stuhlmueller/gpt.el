@@ -74,7 +74,7 @@ Use `le-gpt-python-path' and `le-gpt--script-path' to execute the command with n
   (run-with-timer 1 1
                   (lambda (timer-object)
                     (when (process-live-p timer-object)
-                      (font-lock-fontify-buffer)
+                      (font-lock-update)
                       (message "GPT Pilot: Running...")))
                   process))
 

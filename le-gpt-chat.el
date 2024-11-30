@@ -46,10 +46,10 @@ Otherwise, create a temporary buffer.  Use the `le-gpt-chat-mode' for the output
   "Run GPT command with BUFFER text as input and append output stream to output-buffer."
   (with-current-buffer buffer
     (goto-char (point-max))
-    (font-lock-fontify-buffer)
+    (font-lock-update)
     (le-gpt--make-process (le-gpt--create-prompt-file buffer) buffer)
     (message "GPT Pilot: Running command...")
-    (font-lock-fontify-buffer)))
+    (font-lock-update)))
 
 ;; Chat commands (le-gpt-chat-start, le-gpt-chat-follow-up)
 (defun le-gpt-chat-start (&optional all-buffers)
@@ -96,7 +96,7 @@ Otherwise, use the current region."
            (memq 'le-gpt-chat-prefix buffer-invisibility-spec))
       (remove-from-invisibility-spec 'le-gpt-chat-prefix)
     (add-to-invisibility-spec 'le-gpt-chat-prefix))
-  (font-lock-fontify-buffer))
+  (font-lock-update))
 
 (defun le-gpt-chat-copy-code-block ()
   "Copy the content of the code block at point to the clipboard."
@@ -191,7 +191,7 @@ Otherwise, use the current region."
           (progn
             (setq-local font-lock-defaults '(le-gpt--chat-font-lock-keywords))
             (font-lock-mode 1)
-            (font-lock-fontify-buffer)))
+            (font-lock-update)))
         (add-to-invisibility-spec 'le-gpt-chat-prefix)))))
 
 ;; Initialize the mode
