@@ -43,6 +43,7 @@ You'll also need API keys from [OpenAI](https://beta.openai.com/) and/or [Anthro
 (use-package le-gpt
   :straight (le-gpt :type git
                     :host github
+                    :files (:defaults "le-gpt.py")
                     :repo "AnselmC/le-gpt.el")
   :bind (("M-C-g" . le-gpt-chat)
          ("M-C-n" . le-gpt-complete-at-point)
