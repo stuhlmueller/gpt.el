@@ -12,9 +12,16 @@ cask: $(CASK_DIR)
 lint: cask
 	cask exec emacs --quick --batch --directory . --eval "(require 'package-lint)" --eval '(setq package-lint-main-file "le-gpt.el")' -f package-lint-batch-and-exit *.el
 
+
+.PHONY: checkdoc
+checkdoc: cask
+	cask exec emacs -Q -batch --eval '(dolist (file (directory-files "." t "\\.el$$")) (checkdoc-file file))'
+
 .PHONY: compile
-compile: cask
-	! (cask eval "(let ((byte-compile-error-on-warn t)) \
-	                 (cask-cli/build))" 2>&1 \
-	   | egrep -a "(Warning|Error):") ; \
-	  (ret=$$? ; cask clean-elc && exit $$ret)
+compile: clean cask
+	cask exec emacs -Q -L . -batch -f batch-byte-compile *.el
+
+.PHONY: clean
+clean:
+	rm -f *.elc
+

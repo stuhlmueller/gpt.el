@@ -21,7 +21,7 @@
 
 (defun le-gpt-completion-at-point ()
   "Get completion from gpt based on buffer content up to point.
-The generated completion is displayed directly in buffer. Accept with RET."
+The generated completion is displayed directly in buffer.  Accept with RET."
   (let* ((start-point (point))
          (overlay (make-overlay start-point start-point))
          (buffer-content (buffer-substring-no-properties (point-min) start-point))

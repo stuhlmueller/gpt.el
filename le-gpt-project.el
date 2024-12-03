@@ -105,11 +105,10 @@ Shows currently selected files.  Empty input finishes selection."
 
 (defun le-gpt--get-project-files ()
   "Get list of files in current project using project.el."
-  (let (current-project (project-current))
+  (let ((current-project (project-current)))
     (if current-project
-        (project-files (project-current))
+        (project-files current-project)
       (error "Not in any project recognized by project.el"))))
-
 
 (defun le-gpt--read-multiple-files-to-remove (files)
   "Let user select multiple FILES to remove using completion.
