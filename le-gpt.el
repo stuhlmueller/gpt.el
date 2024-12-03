@@ -23,6 +23,8 @@
 
 ;;; Code:
 
+(require 'markdown-mode)
+
 (require 'le-gpt-core)
 (require 'le-gpt-chat)
 (require 'le-gpt-transform)
