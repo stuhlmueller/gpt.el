@@ -90,7 +90,7 @@ Provide text in buffer as input & append stream to BUFFER."
 
 (defun le-gpt--chat-get-visible-buffers-content ()
   "Get content, buffer name, and file name (optional) of all visible buffers."
-  (let ((visible-buffers (mapcar 'window-buffer (window-list)))
+  (let ((visible-buffers (mapcar #'window-buffer (window-list)))
         contents)
     (dolist (buffer visible-buffers contents)
       (with-current-buffer buffer
@@ -99,7 +99,7 @@ Provide text in buffer as input & append stream to BUFFER."
                       (or (buffer-file-name) "N/A")
                       (buffer-substring-no-properties (point-min) (point-max)))
               contents)))
-    (mapconcat 'identity (nreverse contents) "\n\n")))
+    (mapconcat #'identity (nreverse contents) "\n\n")))
 
 (defun le-gpt-chat-start (&optional all-buffers)
   "Start chat with GPT in new buffer.
@@ -129,7 +129,7 @@ Otherwise, use the current region."
 (defun le-gpt-chat-follow-up ()
   "Run a follow-up GPT command on the output buffer and append the output stream."
   (interactive)
-  (unless (eq major-mode 'le-gpt-chat-mode)
+  (unless (derived-mode-p 'le-gpt-chat-mode)
     (user-error "Not in a gpt output buffer"))
   (let ((command (le-gpt--read-command)))
     (goto-char (point-max))
@@ -164,7 +164,7 @@ Otherwise, use the current region."
 (defun le-gpt-chat-generate-buffer-name ()
   "Update the buffer name by asking GPT to create a title for it."
   (interactive)
-  (unless (eq major-mode 'le-gpt-chat-mode)
+  (unless (derived-mode-p 'le-gpt-chat-mode)
     (user-error "Not in a gpt output buffer"))
   (let* ((le-gpt-buffer (current-buffer))
          (buffer-string (le-gpt--chat-buffer-string le-gpt-buffer))
