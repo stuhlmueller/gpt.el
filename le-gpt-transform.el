@@ -1,5 +1,7 @@
 ;;; le-gpt-transform.el --- Transform region functionality for le-gpt.el -*- lexical-binding: t; -*-
 
+;; SPDX-License-Identifier: MIT
+
 ;;; Commentary:
 ;; 
 

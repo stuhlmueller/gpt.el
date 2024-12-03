@@ -1,5 +1,7 @@
 ;;; le-gpt-chat.el --- Chat functionality for le-gpt.el -*- lexical-binding: t; -*-
 
+;; SPDX-License-Identifier: MIT
+
 ;;; Commentary:
 ;;
 
