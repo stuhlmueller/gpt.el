@@ -38,6 +38,8 @@ You don't need to install all of them, but minimally `openai` or `anthropic`.
 
 You'll also need API keys from [OpenAI](https://beta.openai.com/) and/or [Anthropic](https://console.anthropic.com).
 
+You'll also need [markdown-mode](https://github.com/jrblevin/markdown-mode) for displaying the chat conversations nicely.
+
 ### Using straight with use-package
 ```elisp
 (use-package le-gpt

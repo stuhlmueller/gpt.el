@@ -9,6 +9,7 @@
 
 (require 'le-gpt-core)
 (require 'le-gpt-project)
+(require 'markdown-mode)
 
 (defcustom le-gpt-chat-use-named-buffers t
   "If non-nil, use named buffers for GPT output.  Otherwise, use temporary buffers."
@@ -99,7 +100,6 @@ Provide text in buffer as input & append stream to BUFFER."
               contents)))
     (mapconcat 'identity (nreverse contents) "\n\n")))
 
-;; Chat commands (le-gpt-chat-start, le-gpt-chat-follow-up)
 (defun le-gpt-chat-start (&optional all-buffers)
   "Start chat with GPT in new buffer.
 If called with a prefix argument (i.e., ALL-BUFFERS is non-nil),
@@ -160,8 +160,6 @@ Otherwise, use the current region."
         (kill-new code)
         (message "Code block copied to clipboard.")))))
 
-;; Buffer naming and management
-
 (defun le-gpt-chat-generate-buffer-name ()
   "Update the buffer name by asking GPT to create a title for it."
   (interactive)
@@ -186,37 +184,24 @@ Otherwise, use the current region."
     (buffer-string)))
 
 
-;; Dynamic mode creation
-(defun le-gpt--chat-dynamically-define-le-gpt-chat-mode ()
-  "Define `le-gpt-chat-mode' based on whether `markdown-mode' is available or not."
-  (let ((parent-mode (if (fboundp 'markdown-mode)
-                         'markdown-mode
-                       'text-mode)))
-    (eval
-     `(define-derived-mode le-gpt-chat-mode ,parent-mode "GPT"
-        "A mode for displaying the output of GPT commands."
-        (message "GPT mode initialized with parent: %s" ',parent-mode)
-        (setq-local word-wrap t)
-        (setq-local font-lock-extra-managed-props '(invisible))
-        (if (eq ',parent-mode 'markdown-mode)
-            (progn
-              (setq markdown-fontify-code-blocks-natively t)
-              (setq font-lock-defaults
-                    (list (append markdown-mode-font-lock-keywords le-gpt--chat-font-lock-keywords))))
-          (progn
-            (setq-local font-lock-defaults '(le-gpt--chat-font-lock-keywords))
-            (font-lock-mode 1)
-            (font-lock-update)))
-        (add-to-invisibility-spec 'le-gpt-chat-prefix)))))
+(define-derived-mode le-gpt-chat-mode markdown-mode "Le GPT Chat"
+  "Minor mode for le-gpt-chat buffers derived from `markdown-mode'."
+  :group 'le-gpt
+  (setq-local word-wrap t)
+  (setq-local font-lock-extra-managed-props '(invisible))
+  (setq markdown-fontify-code-blocks-natively t)
+  (setq font-lock-defaults
+        (list (append markdown-mode-font-lock-keywords le-gpt--chat-font-lock-keywords)))
+  (add-to-invisibility-spec 'le-gpt-chat-prefix))
 
-;; Initialize the mode
-(le-gpt--chat-dynamically-define-le-gpt-chat-mode)
-
-;; Add keybindings for chat-mode
-(define-key le-gpt-chat-mode-map (kbd "C-c C-c") 'le-gpt-chat-follow-up)
-(define-key le-gpt-chat-mode-map (kbd "C-c C-p") 'le-gpt-chat-toggle-prefix)
-(define-key le-gpt-chat-mode-map (kbd "C-c C-b") 'le-gpt-chat-copy-code-block)
-(define-key le-gpt-chat-mode-map (kbd "C-c C-t") 'le-gpt-chat-generate-buffer-name)
+(defvar le-gpt-chat-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-c") 'le-gpt-chat-follow-up)
+    (define-key map (kbd "C-c C-p") 'le-gpt-chat-toggle-prefix)
+    (define-key map (kbd "C-c C-b") 'le-gpt-chat-copy-code-block)
+    (define-key map (kbd "C-c C-t") 'le-gpt-chat-generate-buffer-name)
+    map)
+  "Keymap for `le-gpt-chat-mode'.")
 
 (provide 'le-gpt-chat)
 ;;; le-gpt-chat.el ends here
