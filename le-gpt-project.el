@@ -104,16 +104,11 @@ Shows currently selected files.  Empty input finishes selection."
     (nreverse selected-files)))
 
 (defun le-gpt--get-project-files ()
-  "Get list of files in current project using project.el or projectile.el."
-  (cond
-   ((and (fboundp 'project-current)
-         (project-current))
-    (project-files (project-current)))
-   ((and (fboundp 'projectile-project-root)
-         (projectile-project-root))
-    (projectile-project-files))
-   (t
-    (error "No project found.  Please use project.el or projectile.el"))))
+  "Get list of files in current project using project.el."
+  (let (current-project (project-current))
+    (if current-project
+        (project-files (project-current))
+      (error "Not in any project recognized by project.el"))))
 
 
 (defun le-gpt--read-multiple-files-to-remove (files)

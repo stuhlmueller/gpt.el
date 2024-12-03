@@ -8,7 +8,6 @@
 ;;; Code:
 
 (require 'savehist)
-(require 'project)
 
 ;; Core configuration variables
 (defvar le-gpt--script-path
