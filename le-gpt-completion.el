@@ -1,5 +1,6 @@
 ;;; le-gpt-completion.el --- Completion functionality for le-gpt.el -*- lexical-binding: t; -*-
 
+;; License: MIT
 ;; SPDX-License-Identifier: MIT
 
 ;;; Commentary:

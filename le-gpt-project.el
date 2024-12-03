@@ -1,5 +1,6 @@
 ;;; le-gpt-project.el --- Project context functionality for le-gpt.el -*- lexical-binding: t; -*-
 
+;; License: MIT
 ;; SPDX-License-Identifier: MIT
 
 ;;; Commentary:
