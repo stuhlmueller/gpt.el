@@ -20,8 +20,8 @@
 (defun le-gpt-transform-region-with-prompt ()
   "Transform the selected region.
 Ask user for the transformation command and replace region with response."
-  (let* ((start (region-beginning))
-         (end (region-end))
+  (let* ((start (if (use-region-p) (region-beginning) (point-min)))
+         (end (if (use-region-p) (region-end) (point-max)))
          (region-content (buffer-substring-no-properties start end))
          (buffer-before (buffer-substring-no-properties (point-min) start))
          (buffer-after (buffer-substring-no-properties end (point-max)))
