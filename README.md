@@ -17,11 +17,13 @@ The aim is to make sure emacs stays up-to-date with modern GPT support. Essentia
 | `M-x le-gpt-chat` & `C-c` to follow-up & `C-t` to generate buffer name using GPT | `M-x le-gpt-complete-at-point`                                             |
 
 
-| Project Context                                                         | Region Transformation                                             |
-|-------------------------------------------------------------------------|-------------------------------------------------------------------|
-| ![le-gpt-with-context-demo](./resources/le-gpt-project-context.gif)     | ![le-gpt-transform-region-demo](./resources/le-gpt-transform.gif) |
-| Select files from your project that GPT should use as context           | Select a region you want GPT to transform                         |
-| `M-x le-gpt-select-project-files` & `M-x le-gpt-deselect-project-files` | `M-x le-gpt-transform-region`                                     |
+| Project Context                                                                               | Region Transformation                                             |
+|-----------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| ![le-gpt-with-context-demo](./resources/le-gpt-project-context.gif)                           | ![le-gpt-transform-region-demo](./resources/le-gpt-transform.gif) |
+| Select files from your project that GPT should use as context                                 | Select a region you want GPT to transform                         |
+| `M-x le-gpt-select-project-files` & `M-x le-gpt-deselect-project-files`                       | `M-x le-gpt-transform-region`                                     |
+| Use chat/complete/transform with a prefix argument to select context files for a single query |                                                                   |
+
 
 
 
