@@ -32,23 +32,28 @@
 (require 'le-gpt-project)
 
 ;;;###autoload
-(defun le-gpt-chat (&optional all-buffers)
+(defun le-gpt-chat (&optional temp-context-files)
   "Start a GPT chat session.
-With prefix argument ALL-BUFFERS, include all visible buffers as context."
+With prefix argument TEMP-CONTEXT-FILES,
+interactively select context files to be used for this command."
   (interactive "P")
-  (le-gpt-chat-start all-buffers))
+  (le-gpt-chat-start temp-context-files))
 
 ;;;###autoload
-(defun le-gpt-transform-region ()
-  "Transform the selected region using GPT."
-  (interactive)
-  (le-gpt-transform-region-with-prompt))
+(defun le-gpt-transform-region (&optional temp-context-files)
+  "Transform the selected region using GPT.
+With prefix argument TEMP-CONTEXT-FILES,
+interactively select context files to be used for this command."
+  (interactive "P")
+  (le-gpt-transform-region-with-prompt temp-context-files))
 
 ;;;###autoload
-(defun le-gpt-complete-at-point ()
-  "Get completion suggestions from GPT at point."
-  (interactive)
-  (le-gpt-completion-at-point))
+(defun le-gpt-complete-at-point (&optional temp-context-files)
+  "Get completion suggestions from GPT at point.
+With prefix argument TEMP-CONTEXT-FILES,
+interactively select context files to be used for this command."
+  (interactive "P")
+  (le-gpt-completion-at-point temp-context-files))
 
 ;;;###autoload
 (defun le-gpt-select-project-files ()

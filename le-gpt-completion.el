@@ -20,14 +20,16 @@
   :type 'string
   :group 'le-gpt)
 
-(defun le-gpt-completion-at-point ()
-  "Get completion from gpt based on buffer content up to point.
-The generated completion is displayed directly in buffer.  Accept with RET."
+(defun le-gpt-completion-at-point (temp-context-files)
+  "Get completion from GPT based on buffer content up to point.
+If TEMP-CONTEXT-FILES is non-nil, prompt for context files.
+The generated completion is displayed directly in buffer.
+Accept with RET or cancel with any other key."
   (let* ((start-point (point))
          (overlay (make-overlay start-point start-point))
          (buffer-content (buffer-substring-no-properties (point-min) start-point))
          (buffer-rest (buffer-substring-no-properties start-point (point-max)))
-         (project-context (le-gpt-get-project-context))
+         (project-context (le-gpt--get-project-context temp-context-files))
          (prompt (concat (when project-context (concat "User:\n\n" project-context))
                          "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " le-gpt-complete-at-point-instructions))
          (prompt-file (le-gpt--create-prompt-file prompt))

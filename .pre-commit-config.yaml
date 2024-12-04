@@ -11,8 +11,8 @@ repos:
     -   id: mypy
 -   repo: local
     hooks:
-    -   id: package-lint
-        name: package-lint
+    -   id: elisp-lint
+        name: elisp-lint
         entry: make all
         language: system
         always_run: true

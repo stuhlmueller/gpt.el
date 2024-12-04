@@ -4,7 +4,7 @@
 ;; SPDX-License-Identifier: MIT
 
 ;;; Commentary:
-;; 
+;;
 
 ;;; Code:
 
@@ -17,16 +17,17 @@
   :type 'string
   :group 'le-gpt)
 
-(defun le-gpt-transform-region-with-prompt ()
+(defun le-gpt-transform-region-with-prompt (temp-context-files)
   "Transform the selected region.
-Ask user for the transformation command and replace region with response."
+Ask user for the transformation command and replace region with response.
+If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
   (let* ((start (if (use-region-p) (region-beginning) (point-min)))
          (end (if (use-region-p) (region-end) (point-max)))
          (region-content (buffer-substring-no-properties start end))
          (buffer-before (buffer-substring-no-properties (point-min) start))
          (buffer-after (buffer-substring-no-properties end (point-max)))
+         (project-context (le-gpt--get-project-context temp-context-files))
          (command (le-gpt--read-command))
-         (project-context (le-gpt-get-project-context))
          (prompt (concat (when project-context (concat "User:\n\n" project-context))
                          "User: " command "\n"
                          "<region>" region-content "<region>" "\n"

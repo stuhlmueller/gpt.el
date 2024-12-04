@@ -4,7 +4,7 @@
 ;; SPDX-License-Identifier: MIT
 
 ;;; Commentary:
-;; 
+;;
 
 ;;; Code:
 
@@ -27,10 +27,7 @@ First %s is replaced with the list of files, second with their contents.")
 
 (defun le-gpt-select-project-files-for-context ()
   "Prompt user to select files from project to use as context."
-  (let* ((all-files (le-gpt--get-project-files))
-         (relative-files (mapcar (lambda (f)
-                                   (file-relative-name f (project-root (project-current))))
-                                 all-files))
+  (let* ((relative-files (le-gpt--get-project-files))
          ;; Remove already selected files from choices
          (available-files (seq-difference relative-files le-gpt--selected-context-files)))
     (when-let ((new-selections (le-gpt--read-multiple-files available-files)))
@@ -51,18 +48,28 @@ First %s is replaced with the list of files, second with their contents.")
                (length to-remove)
                (length le-gpt--selected-context-files)))))
 
-(defun le-gpt-get-project-context ()
-  "Get the formatted context string based on the selected project files."
-  (when le-gpt--selected-context-files
-    (format le-gpt--project-context-format
-            (mapconcat #'identity le-gpt--selected-context-files "\n")
-            (le-gpt--get-selected-files-contents))))
+(defun le-gpt--get-project-context (select-context-files)
+  "Get the formatted project context string based on the selected files.
+If SELECT-CONTEXT-FILES is non-nil, prompt for new file selection.
+Else use globally selected context files."
+  (let ((selected-context-files (le-gpt--read-or-get-selected-context-files select-context-files)))
+    (when selected-context-files
+      (format le-gpt--project-context-format
+              (mapconcat #'identity selected-context-files "\n")
+              (le-gpt--get-selected-files-contents selected-context-files)))))
 
-(defun le-gpt--get-selected-files-contents ()
-  "Get contents of selected context files as a formatted string."
+(defun le-gpt--read-or-get-selected-context-files (temp-context-files)
+  "Get selected context files or prompt for new ones.
+If TEMP-CONTEXT-FILES is non-nil, prompt for new files."
+  (if temp-context-files (le-gpt--read-multiple-files
+                          (le-gpt--get-project-files))
+    le-gpt--selected-context-files))
+
+(defun le-gpt--get-selected-files-contents (selected-context-files)
+  "Get contents of SELECTED-CONTEXT-FILES as a formatted string."
   (let ((file-contents "")
         (project-root (project-root (project-current))))
-    (dolist (file le-gpt--selected-context-files)
+    (dolist (file selected-context-files)
       (condition-case err
           (setq file-contents
                 (concat file-contents
@@ -108,7 +115,9 @@ Shows currently selected files.  Empty input finishes selection."
   "Get list of files in current project using project.el."
   (let ((current-project (project-current)))
     (if current-project
-        (project-files current-project)
+        (mapcar (lambda (f)
+                  (file-relative-name f (project-root (project-current))))
+                (project-files current-project))
       (error "Not in any project recognized by project.el"))))
 
 (defun le-gpt--read-multiple-files-to-remove (files)

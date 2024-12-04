@@ -88,31 +88,17 @@ Provide text in buffer as input & append stream to BUFFER."
     (message "GPT Pilot: Running command...")
     (font-lock-update)))
 
-(defun le-gpt--chat-get-visible-buffers-content ()
-  "Get content, buffer name, and file name (optional) of all visible buffers."
-  (let ((visible-buffers (mapcar #'window-buffer (window-list)))
-        contents)
-    (dolist (buffer visible-buffers contents)
-      (with-current-buffer buffer
-        (push (format "Buffer Name: %s\nFile Name: %s\nContent:\n%s"
-                      (buffer-name)
-                      (or (buffer-file-name) "N/A")
-                      (buffer-substring-no-properties (point-min) (point-max)))
-              contents)))
-    (mapconcat #'identity (nreverse contents) "\n\n")))
-
-(defun le-gpt-chat-start (&optional all-buffers)
+(defun le-gpt-chat-start (temp-context-files)
   "Start chat with GPT in new buffer.
-If called with a prefix argument (i.e., ALL-BUFFERS is non-nil),
-use all visible buffers as input.
-Otherwise, use the current region."
+If region is active, use the region as input.
+Otherwise, use the entire buffer as input.
+If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
   (let* ((command (le-gpt--read-command))
          (output-buffer (le-gpt--chat-create-output-buffer command))
-         (input (if all-buffers
-                    (le-gpt--chat-get-visible-buffers-content)
-                  (when (use-region-p)
-                    (buffer-substring-no-properties (region-beginning) (region-end)))))
-         (project-context (le-gpt-get-project-context)))
+         (start (if (use-region-p) (region-beginning) (point-min)))
+         (end (if (use-region-p) (region-end) (point-max)))
+         (input (buffer-substring-no-properties start end))
+         (project-context (le-gpt--get-project-context temp-context-files)))
     (switch-to-buffer-other-window output-buffer)
     (when project-context
       (insert (format "User:\n\n```\n%s\n```\n\n" project-context)))
@@ -120,11 +106,6 @@ Otherwise, use the current region."
       (insert (format "User:\n\n```\n%s\n```\n\n" input)))
     (le-gpt--chat-insert-command command)
     (le-gpt--chat-run-buffer output-buffer)))
-
-(defun le-gpt-chat-all-buffers ()
-  "Run user-provided GPT command on all visible buffers and print output stream."
-  (interactive)
-  (le-gpt-chat-start t))
 
 (defun le-gpt-chat-follow-up ()
   "Run a follow-up GPT command on the output buffer and append the output stream."
