@@ -93,12 +93,12 @@ Provide text in buffer as input & append stream to BUFFER."
 If region is active, use the region as input.
 Otherwise, use the entire buffer as input.
 If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
-  (let* ((command (le-gpt--read-command))
+  (let* ((project-context (le-gpt--get-project-context temp-context-files))
+         (command (le-gpt--read-command))
          (output-buffer (le-gpt--chat-create-output-buffer command))
          (start (if (use-region-p) (region-beginning) (point-min)))
          (end (if (use-region-p) (region-end) (point-max)))
-         (input (buffer-substring-no-properties start end))
-         (project-context (le-gpt--get-project-context temp-context-files)))
+         (input (buffer-substring-no-properties start end)))
     (switch-to-buffer-other-window output-buffer)
     (when project-context
       (insert (format "User:\n\n```\n%s\n```\n\n" project-context)))
