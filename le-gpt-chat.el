@@ -96,9 +96,8 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
   (let* ((project-context (le-gpt--get-project-context temp-context-files))
          (command (le-gpt--read-command))
          (output-buffer (le-gpt--chat-create-output-buffer command))
-         (start (if (use-region-p) (region-beginning) (point-min)))
-         (end (if (use-region-p) (region-end) (point-max)))
-         (input (buffer-substring-no-properties start end)))
+         (input (when (use-region-p)
+                  (buffer-substring-no-properties (region-beginning) (region-end)))))
     (switch-to-buffer-other-window output-buffer)
     (when project-context
       (insert (format "User:\n\n```\n%s\n```\n\n" project-context)))
