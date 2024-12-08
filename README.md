@@ -4,7 +4,7 @@
 
 # gpt.el
 
-gpt.el is a simple Emacs package that lets you interact with instruction-following language models like GPT-4 and Claude 3.5 Sonnet from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or all visible buffers as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
+gpt.el is a simple Emacs package that lets you interact with instruction-following language models like GPT-4 and Claude 3.5 Sonnet from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
 
 ## Installation
 
@@ -87,49 +87,70 @@ By default, gpt.el uses the OpenAI API. To switch to the Anthropic API, you can 
 
 ### Running commands
 
-To run a generative model command, use the `gpt-dwim` function. You can bind it to a key of your choice, for example:
+To run a generative model command, use the `gpt-dwim` function.
+
+`gpt-dwim` prompts you to choose a context mode:
+
+- "all-buffers": Uses all visible buffers as context
+- "current-buffer": Uses only the current buffer as context
+- "none": Uses no buffer context
+
+Alternatively you can use one of the following wrapper functions:
+
+1. `gpt-dwim-all-buffers`: Directly uses all visible buffers as context
+2. `gpt-dwim-current-buffer`: Directly uses the current buffer as context
+3. `gpt-dwim-no-context`: Uses no buffer context
+
+You can bind these functions to keys of your choice, for example:
 
 ```elisp
 (global-set-key (kbd "M-C-g") 'gpt-dwim)
+(global-set-key (kbd "M-C-b") 'gpt-dwim-all-buffers)
 ```
 
-When you invoke `gpt-dwim`, you will be prompted for a command, with history and completion. The command can be any text. For example:
+When you invoke any of these commands, you'll see a prompt that shows what context will be included. For example:
+
+```
+GPT [all buffers + selection]: 
+```
+
+The command you entercan be any text. For example:
 
 ```
 Write a haiku about Emacs.
 ```
 
-If you have an active region, it will be used as contextual input to the command. If you enter n/a as the command, only the region will be passed to the model. The output of the model running the command will be displayed in a temporary buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the generative model. You can switch back to the original buffer at any time.
+If you have an active region, it will always be included as additional context. If you enter "n/a" as the command, only the context will be passed to the model.
 
-If you want to use all visible buffers as input, use the `gpt-dwim-all-buffers` function. You can bind it to a key of your choice, for example:
+The output will be displayed in a temporary or named buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the model. You can switch back to the original buffer at any time.
 
-```elisp
-(global-set-key (kbd "M-C-b") 'gpt-dwim-all-buffers)
-```
+### Buffer Display
 
-### Follow-up commands
+By default, output is shown in a buffer named after the first few characters of your command. You have two options for buffer naming:
+
+1. Automatic naming: The buffer name will be truncated to `gpt-buffer-name-length` characters
+2. GPT-generated naming: Use `C-c C-t` (`gpt-generate-buffer-name`) to have GPT generate a meaningful name based on your command
+
+### Markdown Support
+
+The output buffer uses markdown-mode if available, falling back to text-mode if not. This provides better syntax highlighting for code blocks and other markdown elements.
+
+### Buffer Commands
+
+In the gpt-output buffer:
+- `C-c C-c`: Run a follow-up command
+- `C-c C-b`: Copy the content of the code block at point
+- `C-c C-p`: Toggle visibility of "User:", "Human:", and "Assistant:" prefixes
+- `C-c C-m`: Switch between different models
+- `C-c C-t`: Generate a meaningful buffer name using GPT
+
+### Follow-up Commands
 
 In the gpt-output buffer, `C-c C-c` is bound to running a follow-up command that is provided the previous commands and outputs as input. For example, you can run a command "Explain this in more detail" to get more information about the previous response.
-
-### Copying code blocks
-
-In the gpt-output buffer, `C-c C-b` is bound to copying the content of the code block at point to the clipboard.
-
-### Toggling prefix visibility
-
-In the gpt-output buffer, `C-c C-p` is bound to toggling the visibility of the "User:", "Human:", and "Assistant:" prefixes.
-
-### Switching models
-
-You can switch between different models (GPT-4, GPT-3.5-turbo, and Claude 3 Sonnet) using the `gpt-switch-model` function. In the gpt-output buffer, `C-c C-m` is bound to this function. When called, it will prompt you to choose a model from the available options.
 
 ### History
 
 You can view the command history by calling `gpt-display-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name. To clear the command history, use the `gpt-clear-command-history` function.
-
-### GPT buffer names
-
-By default, the created buffer names will just be the first `gpt-buffer-name-length` characters of the original command. To have more meaningful names, you can have GPT generate it for you via `gpt-generate-buffer-name` (`C-c C-t`). Note that this call to GPT is synchronous. 
 
 ## Contributing
 

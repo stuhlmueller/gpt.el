@@ -3,7 +3,7 @@
 ;; Copyright (C) 2022 Andreas Stuhlmueller
 
 ;; Author: Andreas Stuhlmueller <andreas@ought.org>
-;; Version: 1.1
+;; Version: 1.2
 ;; Keywords: openai, anthropic, claude, language, copilot, convenience, tools
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
@@ -34,8 +34,11 @@
 (defvar gpt-script-path (expand-file-name "gpt.py" (file-name-directory (or load-file-name buffer-file-name)))
   "The path to the Python script used by gpt.el.")
 
+(defvar gpt-api-type 'openai
+  "The type of API to use. Either 'openai or 'anthropic.")
+
 (defvar gpt-model "gpt-4o"
-  "The model to use (e.g., 'gpt-4', 'claude-3-5-sonnet-20240620').")
+  "The model to use (e.g., 'gpt-4o', 'claude-3-5-sonnet-latest').")
 
 (defvar gpt-max-tokens "2000"
   "The max_tokens value used with the chosen model.")
@@ -48,9 +51,6 @@
 
 (defvar gpt-anthropic-key "NOT SET"
   "The Anthropic API key to use.")
-
-(defvar gpt-api-type 'openai
-  "The type of API to use. Either 'openai or 'anthropic.")
 
 (defvar gpt-python-path "python"
   "The path to your python executable.")
@@ -96,9 +96,25 @@ have the same meaning as for `completing-read'."
            map)))
     (completing-read prompt collection predicate require-match initial-input hist def inherit-input-method)))
 
-(defun gpt-read-command ()
-  "Read a GPT command from the user with history and completion."
-  (let ((cmd (gpt-completing-read-space "Command: " gpt-command-history nil nil nil 'gpt-command-history)))
+(defun gpt-read-command (context-mode use-selection)
+  "Read a GPT command from the user with history and completion.
+Shows CONTEXT-MODE and selection status in the prompt.
+USE-SELECTION determines whether selection will be included."
+  (let* ((has-region (and use-selection (use-region-p)))
+         (context-desc
+          (cond
+           ((eq context-mode 'all-buffers)
+            (if has-region "all buffers + selection" "all buffers"))
+           ((eq context-mode 'current-buffer)
+            (if has-region "buffer + selection" "buffer"))
+           ((and (null context-mode) has-region) "selection")
+           (t nil)))
+         (prompt (if context-desc
+                     (format "GPT [%s]: " context-desc)
+                   "GPT: "))
+         (cmd (gpt-completing-read-space prompt
+                                         gpt-command-history nil nil nil
+                                         'gpt-command-history)))
     (if (string-equal cmd "n/a")
         ""
       (string-trim cmd))))
@@ -120,47 +136,98 @@ have the same meaning as for `completing-read'."
   (let ((template "User: %s\n\nAssistant: "))
     (insert (format template command))))
 
-(defun gpt-get-visible-buffers-content ()
-  "Get the content, buffer name, and file name (if available) of all currently visible buffers."
-  (let ((visible-buffers (mapcar 'window-buffer (window-list)))
-        contents)
-    (dolist (buffer visible-buffers contents)
-      (with-current-buffer buffer
-        (push (format "Buffer Name: %s\nFile Name: %s\nContent:\n%s"
-                      (buffer-name)
-                      (or (buffer-file-name) "N/A")
-                      (buffer-substring-no-properties (point-min) (point-max)))
-              contents)))
-    (mapconcat 'identity (nreverse contents) "\n\n")))
+(defun gpt-get-buffer-content (buffer &optional include-metadata)
+  "Get content from BUFFER, optionally including metadata if INCLUDE-METADATA is non-nil."
+  (with-current-buffer buffer
+    (let ((content (buffer-substring-no-properties (point-min) (point-max))))
+      (if include-metadata
+          (format "# %s (File %s)\n\n%s"
+                  (buffer-name)
+                  (or (buffer-file-name) "N/A")
+                  content)
+        content))))
 
-(defun gpt-dwim (&optional all-buffers)
-  "Run user-provided GPT command on region or all visible buffers and print output stream.
-If called with a prefix argument (i.e., ALL-BUFFERS is non-nil), use all visible buffers as input. Otherwise, use the current region."
-  (interactive "P")
-  (let* ((initial-buffer (current-buffer))
-         (command (gpt-read-command))
+(defun gpt-get-context (context-mode)
+  "Get context based on CONTEXT-MODE ('all-buffers, 'current-buffer, or nil).
+Always includes region content if region is active."
+  (let* ((has-region (use-region-p))
+         (region-text (when has-region
+                        (buffer-substring-no-properties
+                         (region-beginning)
+                         (region-end))))
+         (buffer-content
+          (cond
+           ((eq context-mode 'all-buffers)
+            (let ((visible-buffers (mapcar 'window-buffer (window-list))))
+              (mapconcat
+               (lambda (buffer)
+                 (gpt-get-buffer-content buffer t))
+               visible-buffers
+               "\n\n")))
+
+           ((eq context-mode 'current-buffer)
+            (gpt-get-buffer-content (current-buffer) t))
+
+           (t ""))))
+    (cond
+     ;; Both buffer content and region
+     ((and (not (string-empty-p buffer-content)) has-region)
+      (format "Buffers:\n\n```\n%s\n```\n\nSelected region:\n\n```\n%s\n```"
+              buffer-content region-text))
+
+     ;; Only buffer content
+     ((not (string-empty-p buffer-content))
+      (format "Buffers:\n\n```\n%s\n```" buffer-content))
+
+     ;; Only region
+     (has-region
+      (format "Selected region:\n\n```\n%s\n```" region-text))
+
+     ;; Neither
+     (t ""))))
+
+(defun gpt-dwim (&optional context-mode)
+  "Run user-provided GPT command with configurable context and print output stream.
+CONTEXT-MODE can be:
+- 'all-buffers: Use all visible buffers as context
+- 'current-buffer: Use current buffer as context
+- nil or 'none: Use no buffer context
+In all cases, if there is an active region, it will be included."
+  (interactive (list (let ((choice (completing-read "Context mode: "
+                                                    '("all-buffers" "current-buffer" "none")
+                                                    nil t)))
+                       (unless (string= choice "none")
+                         (intern choice)))))
+  (let* ((command (gpt-read-command context-mode t))  ; Pass t to use selection
          (output-buffer (gpt-create-output-buffer command))
-         (input (if all-buffers
-                    (gpt-get-visible-buffers-content)
-                  (when (use-region-p)
-                    (buffer-substring-no-properties (region-beginning) (region-end))))))
+         (input (gpt-get-context context-mode)))
     (switch-to-buffer-other-window output-buffer)
-    (when input
-      (insert (format "User:\n\n```\n%s\n```\n\n" input)))
+    (when (not (string-empty-p input))
+      (insert (format "User:\n\n%s\n\n" input)))
     (gpt-insert-command command)
     (gpt-run-buffer output-buffer)))
 
 (defun gpt-dwim-all-buffers ()
-  "Run user-provided GPT command on all visible buffers and print output stream."
+  "Run GPT command with all visible buffers as context."
   (interactive)
-  (gpt-dwim t))
+  (gpt-dwim 'all-buffers))
+
+(defun gpt-dwim-current-buffer ()
+  "Run GPT command with current buffer as context."
+  (interactive)
+  (gpt-dwim 'current-buffer))
+
+(defun gpt-dwim-no-context ()
+  "Run GPT command with no buffer context."
+  (interactive)
+  (gpt-dwim nil))
 
 (defun gpt-follow-up ()
   "Run a follow-up GPT command on the output buffer and append the output stream."
   (interactive)
   (unless (eq major-mode 'gpt-mode)
     (user-error "Not in a gpt output buffer"))
-  (let ((command (gpt-read-command)))
+  (let ((command (gpt-read-command nil nil)))
     (goto-char (point-max))
     (insert "\n\n")
     (gpt-insert-command command)
@@ -299,23 +366,23 @@ PROMPT-FILE is the temporary file containing the prompt."
      ;; the `define-derived-mode` macro expects a literal as its first argument
      ;; hence, we can not simply use the `parent-mode` variable
      ;; but need to use a backquoted list and eval it
-    `(define-derived-mode gpt-mode ,parent-mode "GPT"
-      "A mode for displaying the output of GPT commands."
-      (message "GPT mode intialized with parent: %s" ',parent-mode)
-      (setq-local word-wrap t)
-      (setq-local font-lock-extra-managed-props '(invisible))
-      (if (eq ',parent-mode 'markdown-mode)
+     `(define-derived-mode gpt-mode ,parent-mode "GPT"
+        "A mode for displaying the output of GPT commands."
+        (message "GPT mode intialized with parent: %s" ',parent-mode)
+        (setq-local word-wrap t)
+        (setq-local font-lock-extra-managed-props '(invisible))
+        (if (eq ',parent-mode 'markdown-mode)
+            (progn
+              (setq markdown-fontify-code-blocks-natively t)
+              ;; Combine markdown-mode's keywords with custom keywords
+              (setq font-lock-defaults
+                    (list (append markdown-mode-font-lock-keywords gpt-font-lock-keywords))))
           (progn
-            (setq markdown-fontify-code-blocks-natively t)
-            ;; Combine markdown-mode's keywords with custom keywords
-            (setq font-lock-defaults
-                  (list (append markdown-mode-font-lock-keywords gpt-font-lock-keywords))))
-        (progn
-          (setq-local font-lock-defaults '(gpt-font-lock-keywords))
-          (font-lock-mode 1)
-          (font-lock-fontify-buffer))
-        )
-      (add-to-invisibility-spec 'gpt-prefix)))))
+            (setq-local font-lock-defaults '(gpt-font-lock-keywords))
+            (font-lock-mode 1)
+            (font-lock-fontify-buffer))
+          )
+        (add-to-invisibility-spec 'gpt-prefix)))))
 (gpt-dynamically-define-gpt-mode)
 
 (defun gpt-toggle-prefix ()
