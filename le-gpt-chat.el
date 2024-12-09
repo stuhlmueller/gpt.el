@@ -52,7 +52,7 @@
   "Get the output buffer name for a given COMMAND."
   (let* ((truncated-command (substring command 0 (min le-gpt-chat-buffer-name-length (length command))))
          (ellipsis (if (< (length truncated-command) (length command)) "..." "")))
-    (concat "*gpt"
+    (concat "*le-gpt"
             "[" (number-to-string le-gpt--chat-buffer-counter) "]: "
             truncated-command
             ellipsis
@@ -70,7 +70,8 @@ Use the `le-gpt-chat-mode' for the output buffer."
                buffer)
            (generate-new-buffer (le-gpt--chat-get-output-buffer-name command)))))
     (with-current-buffer output-buffer
-      (le-gpt-chat-mode))
+      (le-gpt-chat-mode)
+      (setq-local buffer-metadata `(:model ,le-gpt-model :timestamp ,(current-time-string))))
     output-buffer))
 
 (defun le-gpt--chat-insert-command (command)
@@ -166,7 +167,7 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
 
 
 (define-derived-mode le-gpt-chat-mode markdown-mode "Le GPT Chat"
-  "Minor mode for le-gpt-chat buffers derived from `markdown-mode'."
+  "Major mode for le-gpt-chat buffers derived from `markdown-mode'."
   :group 'le-gpt
   (setq-local word-wrap t)
   (setq-local font-lock-extra-managed-props '(invisible))
@@ -183,6 +184,123 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
     (define-key map (kbd "C-c C-t") 'le-gpt-chat-generate-buffer-name)
     map)
   "Keymap for `le-gpt-chat-mode'.")
+
+(define-derived-mode le-gpt-buffer-list-mode tabulated-list-mode "Le-GPT Buffers"
+  "Major mode for listing GPT buffers.
+\\{le-gpt-buffer-list-mode-map}"
+  (setq truncate-lines t)
+  (setq tabulated-list-format [("M" 1 t)
+                               ("Buffer name" 80 t)
+                               ("Model" 20 t)
+                               ("Created at" 20 t)])
+  (tabulated-list-init-header))
+
+(defvar le-gpt-buffer-list-mode-map
+  (let ((map (make-sparse-keymap)))
+    ;; Keep the original bindings
+    (define-key map (kbd "RET") #'le-gpt-buffer-list-open-buffer)
+    (define-key map (kbd "d") #'le-gpt-buffer-list-mark-delete)
+    (define-key map (kbd "u") #'le-gpt-buffer-list-unmark)
+    (define-key map (kbd "x") #'le-gpt-buffer-list-execute)
+    (define-key map (kbd "g r") #'le-gpt-buffer-list-refresh)
+    (define-key map (kbd "q") #'quit-window)
+    map)
+  "Keymap for `le-gpt-buffer-list-mode'.")
+
+
+(defun le-gpt-list-buffers ()
+  "Display a list of all GPT buffers."
+  (interactive)
+  (let ((buf (get-buffer "*Le GPT Buffers*")))
+    (unless buf
+      (setq buf (get-buffer-create "*Le GPT Buffers*")))
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (le-gpt-buffer-list-mode)
+        (le-gpt-buffer-list-refresh)
+        (goto-char (point-min)))
+      (display-buffer buf '(display-buffer-same-window)))))
+
+(defun le-gpt-buffer-list-refresh ()
+  "Refresh the GPT buffers list."
+  (interactive)
+  (let ((inhibit-read-only t)
+        (gpt-buffers (le-gpt--get-gpt-buffers)))
+    (erase-buffer)
+    (setq tabulated-list-entries
+          (mapcar (lambda (buffer)
+                    (let ((name (buffer-name buffer))
+                          (model (with-current-buffer buffer
+                                   (if (local-variable-p 'buffer-metadata)
+                                       (plist-get buffer-metadata :model)
+                                     "n/a")))
+                          (timestamp (with-current-buffer buffer
+                                       (if (local-variable-p 'buffer-metadata)
+                                           (or (plist-get buffer-metadata :timestamp) "n/a")
+                                         "n/a"))))
+                      (list buffer
+                            (vector " " name model timestamp))))
+                  gpt-buffers))
+    (tabulated-list-print t)))
+
+(defun le-gpt--get-gpt-buffers ()
+  "Return a list of GPT-related buffers."
+  (sort
+   (seq-filter (lambda (buf)
+                 (string-match-p "\\*le-gpt\\[[0-9]+\\].*\\*" (buffer-name buf)))
+               (buffer-list))
+   (lambda (a b)
+     (string< (buffer-name a) (buffer-name b)))))
+
+(defun le-gpt-buffer-list-open-buffer ()
+  "Open the GPT buffer at point."
+  (interactive)
+  (let ((buffer-name (le-gpt-buffer-list-get-buffer-name)))
+    (message "OPENING %s" buffer-name)
+    (when buffer-name
+      (select-window (display-buffer (get-buffer buffer-name)
+                                     '(display-buffer-same-window))))))
+
+(defun le-gpt-buffer-list-get-buffer-name ()
+  "Get the buffer name from the current line."
+  (save-excursion
+    (beginning-of-line)
+    (when (re-search-forward "^.\\{2\\}\\(\\*le-gpt\\[[0-9]+\\].*\\*\\)" (line-end-position) t)
+      (match-string 1))))
+
+(defun le-gpt-buffer-list-mark-delete ()
+  "Mark a GPT buffer for deletion."
+  (interactive)
+  (when (tabulated-list-get-id)
+    (let ((inhibit-read-only t))
+      (tabulated-list-set-col 0 "D" t)
+      (forward-line 1))))
+
+(defun le-gpt-buffer-list-unmark ()
+  "Unmark a GPT buffer."
+  (interactive)
+  (when (tabulated-list-get-id)
+    (let ((inhibit-read-only t))
+      (tabulated-list-set-col 0 " " t)
+      (forward-line 1))))
+
+(defun le-gpt-buffer-list-execute ()
+  "Execute marked operations in the GPT buffer list."
+  (interactive)
+  (let ((marked-buffers '()))
+    (save-excursion
+      (goto-char (point-min))
+      (while (not (eobp))
+        (when-let* ((entry (tabulated-list-get-entry))
+                    (mark (aref entry 0))
+                    ((string= mark "D"))
+                    (buffer (tabulated-list-get-id)))
+          (push buffer marked-buffers))
+        (forward-line 1)))
+    (dolist (buffer marked-buffers)
+      (kill-buffer buffer))
+    (le-gpt-buffer-list-refresh)))
 
 (provide 'le-gpt-chat)
 ;;; le-gpt-chat.el ends here
