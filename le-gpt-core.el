@@ -124,7 +124,7 @@ INHERIT-INPUT-METHOD have same meaning as in `completing-read'."
   "Switch between OpenAI and Anthropic models."
   (interactive)
   (let* ((models '(("GPT-4o" . (openai . "gpt-4o"))
-                   ("Claude 3.5 Sonnet" . (anthropic . "claude-3-5-sonnet-20240620"))))
+                   ("Claude 3.5 Sonnet" . (anthropic . "claude-3-5-sonnet-latest"))))
          (choice (completing-read "Choose model: " (mapcar #'car models) nil t))
          (model-info (cdr (assoc choice models))))
     (setq le-gpt-api-type (car model-info)
