@@ -68,7 +68,7 @@ interactively select context files to be used for this command."
   (le-gpt-deselect-project-files-for-context))
 
 (defgroup le-gpt nil
-  "Customization group for GPT Pilot."
+  "Customization group for Le GPT."
   :group 'applications)
 
 (provide 'le-gpt)

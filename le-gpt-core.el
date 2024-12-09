@@ -78,7 +78,7 @@ the command with necessary arguments."
                   (lambda (timer-object)
                     (when (process-live-p timer-object)
                       (font-lock-update)
-                      (message "GPT Pilot: Running...")))
+                      (message "Le GPT: Running...")))
                   process))
 
 (defun le-gpt--set-process-sentinel (process timer prompt-file)
@@ -93,8 +93,8 @@ PROMPT-FILE is the temporary file containing the prompt."
        (if (zerop (process-exit-status proc))
            (progn
              (delete-file prompt-file)
-             (message "GPT Pilot: Finished successfully."))
-         (message "GPT Pilot: Failed: %s" status))))))
+             (message "Le GPT: Finished successfully."))
+         (message "Le GPT: Failed: %s" status))))))
 
 ;; Core utility functions
 (defun le-gpt--create-prompt-file (input)
@@ -105,7 +105,7 @@ PROMPT-FILE is the temporary file containing the prompt."
                    input)))
     (with-temp-file temp-file
       (insert content))
-    (message "GPT Pilot: Prompt written to %s" temp-file)
+    (message "Le GPT: Prompt written to %s" temp-file)
     temp-file))
 
 

@@ -85,7 +85,7 @@ Provide text in buffer as input & append stream to BUFFER."
     (goto-char (point-max))
     (font-lock-update)
     (le-gpt--make-process (le-gpt--create-prompt-file buffer) buffer)
-    (message "GPT Pilot: Running command...")
+    (message "Le GPT: Running command...")
     (font-lock-update)))
 
 (defun le-gpt-chat-start (temp-context-files)
