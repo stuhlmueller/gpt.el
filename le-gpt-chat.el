@@ -12,11 +12,6 @@
 (require 'le-gpt-project)
 (require 'markdown-mode)
 
-(defcustom le-gpt-chat-use-named-buffers t
-  "If non-nil, use named buffers for GPT output.  Otherwise, use temporary buffers."
-  :type 'boolean
-  :group 'le-gpt)
-
 (defcustom le-gpt-chat-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Return a single title, nothing else. No quotes."
   "The instruction given to GPT to generate a buffer name."
   :type 'string
@@ -59,16 +54,12 @@
             "*")))
 
 (defun le-gpt--chat-create-output-buffer (command)
-  "Create a buffer to capture the output of the GPT process for COMMAND.
-If `le-gpt-chat-use-named-buffers' is non-nil, create or get a named buffer.
-Otherwise, create a temporary buffer.
+  "Create a named buffer to capture the output of the GPT process for COMMAND.
 Use the `le-gpt-chat-mode' for the output buffer."
   (let ((output-buffer
-         (if le-gpt-chat-use-named-buffers
-             (let ((buffer (get-buffer-create (le-gpt--chat-get-output-buffer-name command))))
-               (setq le-gpt--chat-buffer-counter (1+ le-gpt--chat-buffer-counter))  ; Increment the counter
-               buffer)
-           (generate-new-buffer (le-gpt--chat-get-output-buffer-name command)))))
+         (let ((buffer (get-buffer-create (le-gpt--chat-get-output-buffer-name command))))
+           (setq le-gpt--chat-buffer-counter (1+ le-gpt--chat-buffer-counter))  ; Increment the counter
+           buffer)))
     (with-current-buffer output-buffer
       (le-gpt-chat-mode)
       (setq-local buffer-metadata `(:model ,le-gpt-model :timestamp ,(current-time-string))))
