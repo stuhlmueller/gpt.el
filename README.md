@@ -150,6 +150,8 @@ Contributions are welcome! Please feel free to submit issues and pull requests o
 ### Feature roadmap
 
  - [ ] More models, e.g., groq
+ - [ ] Save chats to file
+ - [ ] More actions in chat buffer list (save, create buffer name)
  - [ ] Ability to generate images (?)
  - [ ] Add all files of the current project as context (?)
  - [ ] Ability to let GPT decide which context files it needs

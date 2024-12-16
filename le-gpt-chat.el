@@ -156,6 +156,14 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
   (with-current-buffer buffer
     (buffer-string)))
 
+(defvar le-gpt-chat-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-c") 'le-gpt-chat-follow-up)
+    (define-key map (kbd "C-c C-p") 'le-gpt-chat-toggle-prefix)
+    (define-key map (kbd "C-c C-b") 'le-gpt-chat-copy-code-block)
+    (define-key map (kbd "C-c C-t") 'le-gpt-chat-generate-buffer-name)
+    map)
+  "Keymap for `le-gpt-chat-mode'.")
 
 (define-derived-mode le-gpt-chat-mode markdown-mode "Le GPT Chat"
   "Major mode for le-gpt-chat buffers derived from `markdown-mode'."
@@ -166,25 +174,6 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
   (setq font-lock-defaults
         (list (append markdown-mode-font-lock-keywords le-gpt--chat-font-lock-keywords)))
   (add-to-invisibility-spec 'le-gpt-chat-prefix))
-
-(defvar le-gpt-chat-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-c") 'le-gpt-chat-follow-up)
-    (define-key map (kbd "C-c C-p") 'le-gpt-chat-toggle-prefix)
-    (define-key map (kbd "C-c C-b") 'le-gpt-chat-copy-code-block)
-    (define-key map (kbd "C-c C-t") 'le-gpt-chat-generate-buffer-name)
-    map)
-  "Keymap for `le-gpt-chat-mode'.")
-
-(define-derived-mode le-gpt-buffer-list-mode tabulated-list-mode "Le-GPT Buffers"
-  "Major mode for listing GPT buffers.
-\\{le-gpt-buffer-list-mode-map}"
-  (setq truncate-lines t)
-  (setq tabulated-list-format [("M" 1 t)
-                               ("Buffer name" 80 t)
-                               ("Model" 20 t)
-                               ("Created at" 20 t)])
-  (tabulated-list-init-header))
 
 (defvar le-gpt-buffer-list-mode-map
   (let ((map (make-sparse-keymap)))
@@ -198,6 +187,15 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
     map)
   "Keymap for `le-gpt-buffer-list-mode'.")
 
+(define-derived-mode le-gpt-buffer-list-mode tabulated-list-mode "Le-GPT Buffers"
+  "Major mode for listing GPT buffers."
+  :group 'le-gpt
+  (setq truncate-lines t)
+  (setq tabulated-list-format [("M" 1 t)
+                               ("Buffer name" 80 t)
+                               ("Model" 20 t)
+                               ("Created at" 20 t)])
+  (tabulated-list-init-header))
 
 (defun le-gpt-list-buffers ()
   "Display a list of all GPT buffers."
