@@ -133,13 +133,8 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
         (kill-new code)
         (message "Code block copied to clipboard.")))))
 
-(defun le-gpt-chat-generate-buffer-name ()
-  "Update the buffer name by asking GPT to create a title for it."
-  (interactive)
-  (unless (derived-mode-p 'le-gpt-chat-mode)
-    (user-error "Not in a gpt output buffer"))
-  (let* ((le-gpt-buffer (current-buffer))
-         (buffer-string (le-gpt--chat-buffer-string le-gpt-buffer))
+(defun le-gpt-chat--generate-buffer-name (le-gpt-buffer)
+  (let* ((buffer-string (le-gpt--chat-buffer-string le-gpt-buffer))
          (prompt (concat buffer-string "\n\nUser: " le-gpt-chat-generate-buffer-name-instruction))
          (prompt-file (le-gpt--create-prompt-file prompt)))
     (with-temp-buffer
@@ -150,6 +145,15 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
         (let ((generated-title (string-trim (buffer-string))))
           (with-current-buffer le-gpt-buffer
             (rename-buffer (le-gpt--chat-get-output-buffer-name generated-title))))))))
+
+
+(defun le-gpt-chat-generate-buffer-name ()
+  "Update the buffer name by asking GPT to create a title for it."
+  (interactive)
+  (unless (derived-mode-p 'le-gpt-chat-mode)
+    (user-error "Not in a gpt output buffer"))
+  (le-gpt-chat--generate-buffer-name (current-buffer)))
+
 
 (defun le-gpt--chat-buffer-string (buffer)
   "Get BUFFER text as string."
@@ -182,6 +186,7 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
     (define-key map (kbd "d") #'le-gpt-buffer-list-mark-delete)
     (define-key map (kbd "u") #'le-gpt-buffer-list-unmark)
     (define-key map (kbd "x") #'le-gpt-buffer-list-execute)
+    (define-key map (kbd "C-c C-t") 'le-gpt-buffer-list-generate-buffer-name)
     (define-key map (kbd "g r") #'le-gpt-buffer-list-refresh)
     (define-key map (kbd "q") #'quit-window)
     map)
@@ -200,9 +205,7 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
 (defun le-gpt-list-buffers ()
   "Display a list of all GPT buffers."
   (interactive)
-  (let ((buf (get-buffer "*Le GPT Buffers*")))
-    (unless buf
-      (setq buf (get-buffer-create "*Le GPT Buffers*")))
+  (let ((buf (get-buffer-create "*Le GPT Buffers*")))
     (with-current-buffer buf
       (let ((inhibit-read-only t))
         (erase-buffer)
@@ -246,10 +249,17 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
   "Open the GPT buffer at point."
   (interactive)
   (let ((buffer-name (le-gpt-buffer-list-get-buffer-name)))
-    (message "OPENING %s" buffer-name)
     (when buffer-name
       (select-window (display-buffer (get-buffer buffer-name)
                                      '(display-buffer-same-window))))))
+
+(defun le-gpt-buffer-list-generate-buffer-name ()
+  "Generate the name for the GPT buffer at point."
+  (interactive)
+  (let ((buffer-name (le-gpt-buffer-list-get-buffer-name)))
+    (when buffer-name
+      (le-gpt-chat--generate-buffer-name (get-buffer buffer-name))
+      (le-gpt-buffer-list-refresh))))
 
 (defun le-gpt-buffer-list-get-buffer-name ()
   "Get the buffer name from the current line."
