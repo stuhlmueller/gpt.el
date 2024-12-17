@@ -16,13 +16,20 @@ The aim is to make sure Emacs stays up-to-date with modern GPT support, essentia
   - `C-c C-p`: Toggle prefix visibility
   - `C-c C-b`: Copy code block at point
   - `C-c C-t`: Generate descriptive buffer name from its content
+  - `C-c C-s`: Save the current buffer
 
-- **Buffer List**: Display a list of all GPT chat buffers with `M-x le-gpt-list-buffers`. 
+- **Chat Buffer List**: Display a list of all GPT chat buffers with `M-x le-gpt-list-buffers`. 
 This feature allows you to manage and navigate through your GPT-related buffers efficiently.
+Mark buffers you want to delete with `d`. Execute those deletions with `x`. Unmark with `u`.
+You can visit a buffer in the list by hitting `RET` and refresh the list with `g r`.
+Generating buffer names with gpt via `C-c C-t` also works in the buffer list.
 
-- **Completion at Point**: Let GPT complete what you're currently writing. Use `M-x le-gpt-complete-at-point` to get suggestions based on your current cursor position.
+- **Save & load chats**: Save a chat when visiting a buffer (or in the buffer list) with `C-c C-s` (or `M-x le-gpt-chat-save-buffer` and `M-x le-gpt-buffer-list-save-buffer`, respectively).
+You can load previously saved chats with `M-x le-gpt-chat-load-file`. 
 
-- **Region Transformation**: Select a region you want GPT to transform. Use `M-x le-gpt-transform-region` to transform the selected region using GPT.
+- **Completion at Point**: Let GPT complete what you're currently writing. Use `M-x le-gpt-complete-at-point` to get suggestions based on your current cursor position. Suggest to bind this to a convenient key. I use `C-M-n`.
+
+- **Region Transformation**: Select a region you want GPT to transform. Use `M-x le-gpt-transform-region` to transform the selected region using GPT. Again, I use `C-M-t` as a shortcut.
 
 - **Project Context**: Select files from your project that GPT should use as context. 
 Globally select project files to be used as context via `M-x le-gpt-select-project-files` or select local, per-command context by running the above commands with a prefix argument (`C-u`). Context is used by chat, completion, and region transforms. 
@@ -39,6 +46,8 @@ To deselect global context files, use `M-x le-gpt-deselect-project-files` or `M-
 |-----------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
 | ![le-gpt-with-context-demo](./resources/le-gpt-project-context.gif)                           | ![le-gpt-transform-region-demo](./resources/le-gpt-transform.gif) |
 
+...and a screenshot for a small buffer list for completeness
+![le-gpt-buffer-list](./resources/le-gpt-buffer-list.png)
 
 ## Installation
 
@@ -72,6 +81,21 @@ Here's how to install it with [straight](https://github.com/radian-software/stra
   (setq le-gpt-openai-key "your-openai-key-here")
   (setq le-gpt-anthropic-key "your-anthropic-key-here"))
 ```
+
+If you're using `evil`, you'll want to add
+
+``` elisp
+(with-eval-after-load 'evil
+    (evil-define-key 'normal le-gpt-buffer-list-mode-map
+      (kbd "RET") #'le-gpt-buffer-list-open-buffer
+      (kbd "d") #'le-gpt-buffer-list-mark-delete
+      (kbd "u") #'le-gpt-buffer-list-unmark
+      (kbd "x") #'le-gpt-buffer-list-execute
+      (kbd "gr") #'le-gpt-buffer-list-refresh
+      (kbd "q") #'quit-window))
+```
+
+to get the above mentioned buffer list comands to work.
 
 ## Configuration
 
@@ -149,9 +173,7 @@ Contributions are welcome! Please feel free to submit issues and pull requests o
 
 ### Feature roadmap
 
- - [ ] More models, e.g., groq
- - [ ] Save chats to file
- - [ ] More actions in chat buffer list (save, create buffer name)
+ - [ ] More models, e.g., groq (waiting for aisuite to support streaming)
  - [ ] Ability to generate images (?)
  - [ ] Add all files of the current project as context (?)
  - [ ] Ability to let GPT decide which context files it needs

@@ -22,6 +22,11 @@
   :type 'integer
   :group 'le-gpt)
 
+(defcustom le-gpt-chat-save-directory (expand-file-name "le-gpt-chats/" user-emacs-directory)
+  "Directory where GPT chat files are saved."
+  :type 'directory
+  :group 'le-gpt)
+
 (defvar le-gpt--chat-buffer-counter 0
   "Counter to ensure unique buffer names for GPT output buffers.")
 
@@ -43,23 +48,25 @@
     ("```\\([\0-\377[:nonascii:]]*?\\)```"
      (1 'font-lock-constant-face))))
 
-(defun le-gpt--chat-get-output-buffer-name (command)
-  "Get the output buffer name for a given COMMAND."
-  (let* ((truncated-command (substring command 0 (min le-gpt-chat-buffer-name-length (length command))))
-         (ellipsis (if (< (length truncated-command) (length command)) "..." "")))
+(defun le-gpt--chat-get-output-buffer-name (raw-name)
+  "Get the output buffer name for a given RAW-NAME."
+  (let* ((truncated-name (substring raw-name 0 (min le-gpt-chat-buffer-name-length (length raw-name))))
+         (ellipsis (if (< (length truncated-name) (length raw-name)) "..." "")))
     (concat "*le-gpt"
             "[" (number-to-string le-gpt--chat-buffer-counter) "]: "
-            truncated-command
+            truncated-name
             ellipsis
             "*")))
+
+(defun le-gpt--chat-create-buffer (raw-name)
+  (let ((output-buffer (get-buffer-create (le-gpt--chat-get-output-buffer-name raw-name))))
+    (setq le-gpt--chat-buffer-counter (1+ le-gpt--chat-buffer-counter))  ; Increment the counter
+    output-buffer))
 
 (defun le-gpt--chat-create-output-buffer (command)
   "Create a named buffer to capture the output of the GPT process for COMMAND.
 Use the `le-gpt-chat-mode' for the output buffer."
-  (let ((output-buffer
-         (let ((buffer (get-buffer-create (le-gpt--chat-get-output-buffer-name command))))
-           (setq le-gpt--chat-buffer-counter (1+ le-gpt--chat-buffer-counter))  ; Increment the counter
-           buffer)))
+  (let ((output-buffer (le-gpt--chat-create-buffer command)))
     (with-current-buffer output-buffer
       (le-gpt-chat-mode)
       (setq-local buffer-metadata `(:model ,le-gpt-model :timestamp ,(current-time-string))))
@@ -160,12 +167,77 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
   (with-current-buffer buffer
     (buffer-string)))
 
+(defun le-gpt-chat--ensure-save-directory ()
+  "Ensure the chat save directory exists."
+  (unless (file-exists-p le-gpt-chat-save-directory)
+    (make-directory le-gpt-chat-save-directory t)))
+
+(defun le-gpt-chat--save-buffer (buffer filename)
+  "Save BUFFER content and metadata to FILENAME."
+  (with-current-buffer buffer
+    (let* ((content (buffer-string))
+           (metadata buffer-metadata)
+           (data `(:content ,content :metadata ,metadata)))
+      (le-gpt-chat--ensure-save-directory)
+      (with-temp-file filename
+        (prin1 data (current-buffer))))))
+
+(defun le-gpt-chat-load-file ()
+  "Load a chat from a file."
+  (interactive)
+  (let ((filename (read-file-name "Load chat from: "
+                                  le-gpt-chat-save-directory
+                                  nil
+                                  t
+                                  nil
+                                  (lambda (name)
+                                    (or (file-directory-p name)
+                                        (string-match-p "\\.gpt$" name))))))
+    (le-gpt-chat--load-file filename)))
+
+(defun le-gpt-chat--load-file (filename)
+  "Load a chat from FILENAME and create a new chat buffer."
+  (let* ((data (with-temp-buffer
+                 (insert-file-contents filename)
+                 (read (current-buffer))))
+         (content (plist-get data :content))
+         (metadata (plist-get data :metadata))
+         (name-no-underscores (replace-regexp-in-string "_" " " (file-name-base filename))))
+    (let ((buffer (le-gpt--chat-create-buffer name-no-underscores)))
+      (with-current-buffer buffer
+        (le-gpt-chat-mode)
+        (setq-local buffer-metadata metadata)
+        (insert content))
+      (switch-to-buffer buffer))))
+
+(defun le-gpt-chat--get-default-filename (buffer-name)
+  (let* ((name-without-prefix (replace-regexp-in-string "\*le-gpt\[[0-9]+\]: " "" buffer-name))
+         (name-without-postfix (substring name-without-prefix 0 -1)); remove training "*"
+         (filename (replace-regexp-in-string "[^a-zA-Z0-9-]" "_" name-without-postfix)))
+    (concat (replace-regexp-in-string "_+" "_" filename) ".gpt")))
+
+(defun le-gpt-chat-save-buffer()
+  (interactive)
+  (unless (derived-mode-p 'le-gpt-chat-mode)
+    (user-error "Not in a gpt output buffer"))
+  (let* ((default-filename (le-gpt-chat--get-default-filename (buffer-name)))
+         (filename (read-file-name "Save chat to: "
+                                   le-gpt-chat-save-directory
+                                   nil
+                                   nil
+                                   default-filename)))
+    (le-gpt-chat--save-buffer (current-buffer) filename)
+    (message "Chat saved to %s" filename)))
+
+
 (defvar le-gpt-chat-mode-map
   (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map markdown-mode-map)
     (define-key map (kbd "C-c C-c") 'le-gpt-chat-follow-up)
     (define-key map (kbd "C-c C-p") 'le-gpt-chat-toggle-prefix)
     (define-key map (kbd "C-c C-b") 'le-gpt-chat-copy-code-block)
     (define-key map (kbd "C-c C-t") 'le-gpt-chat-generate-buffer-name)
+    (define-key map (kbd "C-c C-s") 'le-gpt-chat-save-buffer)
     map)
   "Keymap for `le-gpt-chat-mode'.")
 
@@ -187,6 +259,7 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
     (define-key map (kbd "u") #'le-gpt-buffer-list-unmark)
     (define-key map (kbd "x") #'le-gpt-buffer-list-execute)
     (define-key map (kbd "C-c C-t") 'le-gpt-buffer-list-generate-buffer-name)
+    (define-key map (kbd "C-c C-s") 'le-gpt-buffer-list-save-buffer)
     (define-key map (kbd "g r") #'le-gpt-buffer-list-refresh)
     (define-key map (kbd "q") #'quit-window)
     map)
@@ -196,10 +269,10 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
   "Major mode for listing GPT buffers."
   :group 'le-gpt
   (setq truncate-lines t)
-  (setq tabulated-list-format [("M" 1 t)
-                               ("Buffer name" 80 t)
-                               ("Model" 20 t)
-                               ("Created at" 20 t)])
+  (setq tabulated-list-format `[("M" 1 t)
+                                ("Buffer name" ,le-gpt-chat-buffer-name-length t)
+                                ("Model" 20 t)
+                                ("Created at" 20 t)])
   (tabulated-list-init-header))
 
 (defun le-gpt-list-buffers ()
@@ -235,6 +308,21 @@ If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
                             (vector " " name model timestamp))))
                   gpt-buffers))
     (tabulated-list-print t)))
+
+(defun le-gpt-buffer-list-save-buffer ()
+  "Save the GPT buffer at point to a file."
+  (interactive)
+  (let* ((buffer-name (le-gpt-buffer-list-get-buffer-name))
+         (buffer (when buffer-name (get-buffer buffer-name))))
+    (when buffer
+      (let* ((default-filename (le-gpt-chat--get-default-filename buffer-name))
+             (filename (read-file-name "Save chat to: "
+                                       le-gpt-chat-save-directory
+                                       nil
+                                       nil
+                                       default-filename)))
+        (le-gpt-chat--save-buffer buffer filename)
+        (message "Chat saved to %s" filename)))))
 
 (defun le-gpt--get-gpt-buffers ()
   "Return a list of GPT-related buffers."
