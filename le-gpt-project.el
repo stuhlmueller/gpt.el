@@ -103,7 +103,7 @@ Shows currently selected files.  Empty input finishes selection."
                (format "%sSelect file (empty input when done) [%d selected]: "
                        selected-help
                        (length selected-files))
-               choices nil nil))
+               choices nil nil nil nil ""))
 
         (if (string-empty-p selection)
             (setq done t)
