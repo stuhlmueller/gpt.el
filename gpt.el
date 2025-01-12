@@ -37,7 +37,7 @@
 (defvar gpt-api-type 'openai
   "The type of API to use. Either 'openai or 'anthropic.")
 
-(defvar gpt-model "gpt-4o"
+(defvar gpt-model "claude-3-5-sonnet-latest"
   "The model to use (e.g., 'gpt-4o', 'claude-3-5-sonnet-latest').")
 
 (defvar gpt-max-tokens "2000"
@@ -110,8 +110,8 @@ USE-SELECTION determines whether selection will be included."
            ((and (null context-mode) has-region) "selection")
            (t nil)))
          (prompt (if context-desc
-                     (format "GPT [%s]: " context-desc)
-                   "GPT: "))
+                     (format "%s [%s]: " gpt-model context-desc)
+                   (format "%s: " gpt-model)))
          (cmd (gpt-completing-read-space prompt
                                          gpt-command-history nil nil nil
                                          'gpt-command-history)))
@@ -128,7 +128,7 @@ USE-SELECTION determines whether selection will be included."
            (process (gpt-start-process prompt-file buffer))
            (timer (gpt-start-timer process)))
       (gpt-set-process-sentinel process timer prompt-file)
-      (message "GPT: Running command...")
+      (gpt-message "Running command...")
       (font-lock-fontify-buffer))))
 
 (defun gpt-insert-command (command)
@@ -147,46 +147,57 @@ USE-SELECTION determines whether selection will be included."
                   content)
         content))))
 
+(defun gpt-get-buffer-content-with-cursor (buffer &optional include-metadata)
+  "Get content from BUFFER with a <cursor/> inserted at point.
+If INCLUDE-METADATA is non-nil, prepend a header with buffer name and file path."
+  (with-current-buffer buffer
+    (let* ((before (buffer-substring-no-properties (point-min) (point)))
+           (after (buffer-substring-no-properties (point) (point-max))))
+      (if include-metadata
+          (format "# %s (File %s)\n\n%s<cursor/>%s"
+                  (buffer-name)
+                  (or (buffer-file-name) "N/A")
+                  before
+                  after)
+        (concat before "<cursor/>" after)))))
+
 (defun gpt-get-context (context-mode)
-  "Get context based on CONTEXT-MODE ('all-buffers, 'current-buffer, or nil).
-Always includes region content if region is active."
+  "Return text context based on CONTEXT-MODE, always inserting <cursor/> in the current buffer.
+Possible CONTEXT-MODE values:
+- 'all-buffers: all visible buffers plus a <cursor/> in the current one
+- 'current-buffer: only the current buffer, with a <cursor/>
+- nil: no buffer context
+In all cases, if there is an active region, that region is appended as \"Selected region:\"."
+  (require 'subr-x)
   (let* ((has-region (use-region-p))
          (region-text (when has-region
-                        (buffer-substring-no-properties
-                         (region-beginning)
-                         (region-end))))
+                        (buffer-substring-no-properties (region-beginning) (region-end))))
          (buffer-content
           (cond
            ((eq context-mode 'all-buffers)
-            (let ((visible-buffers (mapcar 'window-buffer (window-list))))
+            (let ((current (current-buffer))
+                  (visible-buffers (mapcar #'window-buffer (window-list))))
               (mapconcat
-               (lambda (buffer)
-                 (gpt-get-buffer-content buffer t))
+               (lambda (buf)
+                 (if (eq buf current)
+                     (gpt-get-buffer-content-with-cursor buf t)
+                   (gpt-get-buffer-content buf t)))
                visible-buffers
                "\n\n")))
-
            ((eq context-mode 'current-buffer)
-            (gpt-get-buffer-content (current-buffer) t))
-
+            (gpt-get-buffer-content-with-cursor (current-buffer) t))
            (t ""))))
     (cond
-     ;; Both buffer content and region
      ((and (not (string-empty-p buffer-content)) has-region)
-      (format "Buffers:\n\n```\n%s\n```\n\nSelected region:\n\n```\n%s\n```"
+      (format "Buffers (cursor is at <cursor/>):\n\n```\n%s\n```\n\nSelected region:\n\n```\n%s\n```"
               buffer-content region-text))
-
-     ;; Only buffer content
      ((not (string-empty-p buffer-content))
-      (format "Buffers:\n\n```\n%s\n```" buffer-content))
-
-     ;; Only region
+      (format "Buffers (cursor is at <cursor/>):\n\n```\n%s\n```" buffer-content))
      (has-region
       (format "Selected region:\n\n```\n%s\n```" region-text))
-
-     ;; Neither
      (t ""))))
 
-(defun gpt-dwim (&optional context-mode)
+(defun gpt-chat (&optional context-mode)
   "Run user-provided GPT command with configurable context and print output stream.
 CONTEXT-MODE can be:
 - 'all-buffers: Use all visible buffers as context
@@ -194,10 +205,10 @@ CONTEXT-MODE can be:
 - nil or 'none: Use no buffer context
 In all cases, if there is an active region, it will be included."
   (interactive (list (let ((choice (completing-read "Context mode: "
-                                                    '("all-buffers" "current-buffer" "none")
-                                                    nil t)))
-                       (unless (string= choice "none")
-                         (intern choice)))))
+                                                  '("all-buffers" "current-buffer" "none")
+                                                  nil t)))
+                      (unless (string= choice "none")
+                        (intern choice)))))
   (let* ((command (gpt-read-command context-mode t))  ; Pass t to use selection
          (output-buffer (gpt-create-output-buffer command))
          (input (gpt-get-context context-mode)))
@@ -207,20 +218,20 @@ In all cases, if there is an active region, it will be included."
     (gpt-insert-command command)
     (gpt-run-buffer output-buffer)))
 
-(defun gpt-dwim-all-buffers ()
+(defun gpt-chat-all-buffers ()
   "Run GPT command with all visible buffers as context."
   (interactive)
-  (gpt-dwim 'all-buffers))
+  (gpt-chat 'all-buffers))
 
-(defun gpt-dwim-current-buffer ()
+(defun gpt-chat-current-buffer ()
   "Run GPT command with current buffer as context."
   (interactive)
-  (gpt-dwim 'current-buffer))
+  (gpt-chat 'current-buffer))
 
-(defun gpt-dwim-no-context ()
+(defun gpt-chat-no-context ()
   "Run GPT command with no buffer context."
   (interactive)
-  (gpt-dwim nil))
+  (gpt-chat nil))
 
 (defun gpt-follow-up ()
   "Run a follow-up GPT command on the output buffer and append the output stream."
@@ -232,6 +243,46 @@ In all cases, if there is an active region, it will be included."
     (insert "\n\n")
     (gpt-insert-command command)
     (gpt-run-buffer (current-buffer))))
+
+(defun gpt-chat-completion (&optional context-mode)
+  "Complete text from cursor position using GPT with configurable context.
+CONTEXT-MODE can be:
+- 'all-buffers: Use all visible buffers as context
+- 'current-buffer: Use current buffer as context
+- nil or 'none: Use no buffer context"
+  (interactive (list (let ((choice (completing-read "Context mode: "
+                                                  '("all-buffers" "current-buffer" "none")
+                                                  nil t)))
+                      (unless (string= choice "none")
+                        (intern choice)))))
+  (let* ((full-context (gpt-get-context context-mode))
+         (source-buffer-name (buffer-name))
+         (output-buffer (gpt-create-output-buffer 
+                        (format "Complete %s" source-buffer-name)))
+         (instruction "Continue writing from the <cursor/> position. Match the style and format of the existing text. Provide as ``` code block with language indicator. No meta commentary."))
+    ;; Switch to output buffer
+    (switch-to-buffer-other-window output-buffer)
+    ;; Insert context and instruction with tags
+    (insert "User:\n\n"
+            "<context>\n"
+            full-context
+            "\n</context>\n\n"
+            "<instruction>\n"
+            instruction
+            "\n</instruction>\n\n")
+    (gpt-insert-command instruction)
+    ;; Run GPT
+    (gpt-run-buffer output-buffer)))
+
+(defun gpt-chat-completion-current-buffer ()
+  "Complete text from cursor position using current buffer as context."
+  (interactive)
+  (gpt-chat-completion 'current-buffer))
+
+(defun gpt-chat-completion-all-buffers ()
+  "Complete text from cursor position using all visible buffers as context."
+  (interactive)
+  (gpt-chat-completion 'all-buffers))
 
 (defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Say only the title, nothing else. No quotes."
   "The instruction given to GPT to generate a buffer name.")
@@ -250,13 +301,12 @@ In all cases, if there is an active region, it will be included."
             (api-key (if (eq gpt-api-type 'openai) gpt-openai-key gpt-anthropic-key))
             (api-type-str (symbol-name gpt-api-type)))
         (erase-buffer)
-        (message "Asking GPT to generate buffer name...")
+        (gpt-message "Asking GPT to generate buffer name...")
         (call-process gpt-python-path nil t nil
                       gpt-script-path api-key gpt-model gpt-max-tokens gpt-temperature api-type-str prompt-file)
         (let ((generated-title (string-trim (buffer-string))))
           (with-current-buffer gpt-buffer
             (rename-buffer (gpt-get-output-buffer-name generated-title))))))))
-
 
 (defun gpt-buffer-string (buffer)
   "Get BUFFER text as string."
@@ -268,7 +318,7 @@ In all cases, if there is an active region, it will be included."
   (let ((temp-file (make-temp-file "gpt-prompt")))
     (with-temp-file temp-file
       (insert (gpt-buffer-string buffer)))
-    (message "GPT: Prompt written to %s" temp-file)
+    (gpt-message "Prompt written to %s" temp-file)
     temp-file))
 
 (defun gpt-start-process (prompt-file output-buffer)
@@ -318,7 +368,7 @@ Otherwise, create a temporary buffer. Use the `gpt-mode' for the output buffer."
                   (lambda (timer-object)
                     (when (process-live-p timer-object)
                       (font-lock-fontify-buffer)
-                      (message "GPT: Running...")))
+                      (gpt-message "Running...")))
                   process))
 
 (defun gpt-set-process-sentinel (process timer prompt-file)
@@ -336,8 +386,8 @@ PROMPT-FILE is the temporary file containing the prompt."
                             (if (zerop (process-exit-status proc))
                                 (progn
                                   (delete-file prompt-file)
-                                  (message "GPT: Finished successfully."))
-                              (message "GPT: Failed: %s" status))))))
+                                  (gpt-message "Finished successfully."))
+                              (gpt-message "Failed: %s" status))))))
 
 (defface gpt-input-face
   '((t :inherit comint-highlight-prompt))
@@ -356,6 +406,17 @@ PROMPT-FILE is the temporary file containing the prompt."
      (2 'gpt-output-face))
     ("```\\([\0-\377[:nonascii:]]*?\\)```"  ; match code snippets enclosed in backticks
      (1 'font-lock-constant-face))))
+
+(defun gpt-dwim (&optional context-mode)
+  "Deprecated: use `gpt-chat' instead.
+CONTEXT-MODE is passed to `gpt-chat'."
+  (interactive (list (let ((choice (completing-read "Context mode: "
+                                                  '("all-buffers" "current-buffer" "none")
+                                                  nil t)))
+                      (unless (string= choice "none")
+                        (intern choice)))))
+  (message "Warning: gpt-dwim is deprecated, use gpt-chat instead")
+  (gpt-chat context-mode))
 
 (defun gpt-dynamically-define-gpt-mode ()
   "Define `gpt-mode` based on whether markdown-mode is available or not."
@@ -413,18 +474,43 @@ PROMPT-FILE is the temporary file containing the prompt."
   "Switch between OpenAI and Anthropic models."
   (interactive)
   (let* ((models '(("GPT-4o" . (openai . "gpt-4o"))
-                   ("Claude 3.5 Sonnet" . (anthropic . "claude-3-5-sonnet-20240620"))))
+                   ("o1" . (openai . "o1"))
+                   ("Claude 3.5 Sonnet" . (anthropic . "claude-3-5-sonnet-latest"))))
          (choice (completing-read "Choose model: " (mapcar #'car models) nil t))
          (model-info (cdr (assoc choice models))))
     (setq gpt-api-type (car model-info)
           gpt-model (cdr model-info))
     (message "Switched to %s model: %s" (car model-info) (cdr model-info))))
 
+(defun gpt-message (format-string &rest args)
+  "Format and display a message with the current model as prefix.
+FORMAT-STRING and ARGS are passed to `message'."
+  (let ((prefixed-format (concat "%s: " format-string)))
+    (apply #'message prefixed-format gpt-model args)))
+
+(defun gpt-close-current ()
+  "Close the current GPT output buffer."
+  (interactive)
+  (when (eq major-mode 'gpt-mode)
+    (kill-buffer (current-buffer))
+    (message "Closed GPT buffer")))
+
+(defun gpt-close-all ()
+  "Close all GPT output buffers and their windows."
+  (interactive)
+  (dolist (buffer (buffer-list))
+    (when (with-current-buffer buffer
+            (eq major-mode 'gpt-mode))
+      (kill-buffer buffer)))
+  (message "Closed all GPT buffers"))
+
 (define-key gpt-mode-map (kbd "C-c C-c") 'gpt-follow-up)
 (define-key gpt-mode-map (kbd "C-c C-p") 'gpt-toggle-prefix)
 (define-key gpt-mode-map (kbd "C-c C-b") 'gpt-copy-code-block)
 (define-key gpt-mode-map (kbd "C-c C-m") 'gpt-switch-model)
 (define-key gpt-mode-map (kbd "C-c C-t") 'gpt-generate-buffer-name)
+(define-key gpt-mode-map (kbd "C-c C-q") 'gpt-close-current)
+(define-key gpt-mode-map (kbd "C-c C-x") 'gpt-close-all)
 
 (provide 'gpt)
 
