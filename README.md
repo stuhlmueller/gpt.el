@@ -87,42 +87,52 @@ By default, gpt.el uses the OpenAI API. To switch to the Anthropic API, you can 
 
 ### Running commands
 
-To run a generative model command, use the `gpt-dwim` function.
+To run a generative model command, use the `gpt-chat` function.
 
-`gpt-dwim` prompts you to choose a context mode:
+`gpt-chat` prompts you to choose a context mode:
 
-- "all-buffers": Uses all visible buffers as context
-- "current-buffer": Uses only the current buffer as context
+- "all-buffers": Uses all visible buffers as context, with cursor position marked
+- "current-buffer": Uses only the current buffer as context, with cursor position marked
 - "none": Uses no buffer context
 
 Alternatively you can use one of the following wrapper functions:
 
-1. `gpt-dwim-all-buffers`: Directly uses all visible buffers as context
-2. `gpt-dwim-current-buffer`: Directly uses the current buffer as context
-3. `gpt-dwim-no-context`: Uses no buffer context
+1. `gpt-chat-all-buffers`: Directly uses all visible buffers as context
+2. `gpt-chat-current-buffer`: Directly uses the current buffer as context
+3. `gpt-chat-no-context`: Uses no buffer context
 
 You can bind these functions to keys of your choice, for example:
 
 ```elisp
-(global-set-key (kbd "M-C-g") 'gpt-dwim)
-(global-set-key (kbd "M-C-b") 'gpt-dwim-all-buffers)
+(global-set-key (kbd "M-C-g") 'gpt-chat)
+(global-set-key (kbd "M-C-b") 'gpt-chat-all-buffers)
 ```
 
 When you invoke any of these commands, you'll see a prompt that shows what context will be included. For example:
 
 ```
-GPT [all buffers + selection]: 
+claude-3-5-sonnet-latest [all buffers + selection]:
 ```
 
-The command you entercan be any text. For example:
+The command you enter can be any text. For example:
 
 ```
 Write a haiku about Emacs.
 ```
 
-If you have an active region, it will always be included as additional context. If you enter "n/a" as the command, only the context will be passed to the model.
+If you have an active region, it will always be included as additional context. The cursor position in the buffer is marked with `<cursor/>` to help the model understand the context better.
 
 The output will be displayed in a temporary or named buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the model. You can switch back to the original buffer at any time.
+
+### Text Completion
+
+For completing text at the cursor position, you can use:
+
+1. `gpt-chat-completion`: Prompts for context mode
+2. `gpt-chat-completion-current-buffer`: Uses current buffer as context
+3. `gpt-chat-completion-all-buffers`: Uses all visible buffers as context
+
+These commands will instruct the model to continue writing from the cursor position, matching the style and format of the existing text.
 
 ### Buffer Display
 
@@ -138,6 +148,7 @@ The output buffer uses markdown-mode if available, falling back to text-mode if 
 ### Buffer Commands
 
 In the gpt-output buffer:
+
 - `C-c C-c`: Run a follow-up command
 - `C-c C-b`: Copy the content of the code block at point
 - `C-c C-p`: Toggle visibility of "User:", "Human:", and "Assistant:" prefixes
