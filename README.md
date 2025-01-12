@@ -154,6 +154,8 @@ In the gpt-output buffer:
 - `C-c C-p`: Toggle visibility of "User:", "Human:", and "Assistant:" prefixes
 - `C-c C-m`: Switch between different models
 - `C-c C-t`: Generate a meaningful buffer name using GPT
+- `C-c C-q`: Close the current GPT buffer
+- `C-c C-x`: Close all GPT buffers
 
 ### Follow-up Commands
 
