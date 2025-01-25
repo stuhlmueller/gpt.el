@@ -24,10 +24,13 @@ try:
 except ImportError:
     jsonlines = None
 
+DEEPSEEK_URL = "https://api.deepseek.com"
+
 
 class APIType(str, Enum):
     openai = "openai"
     anthropic = "anthropic"
+    deepseek = "deepseek"
 
 
 def _ensure_api_type_is_available(api_type: APIType) -> None:
@@ -39,15 +42,25 @@ def _ensure_api_type_is_available(api_type: APIType) -> None:
         print("Error: Anthropic Python package is not installed.")
         print("Please install by running `pip install anthropic'.")
         sys.exit(1)
+    elif api_type == APIType.deepseek and openai is None:
+        print("Error: OpenAI Python package is not installed and needed for deepseek.")
+        print("Please install by running `pip install openai'.")
+        sys.exit(1)
 
 
 def _ensure_api_key_is_set(api_key: str, api_type: APIType) -> None:
     if api_key == "NOT SET":
-        api_name = "OpenAI" if api_type == APIType.openai else "Anthropic"
+        api_name = {
+            APIType.openai: "OpenAI",
+            APIType.anthropic: "Anthropic",
+            APIType.deepseek: "Deepseek",
+        }[api_type]
+        key_var = {
+            APIType.openai: "gpt-openai-key",
+            APIType.anthropic: "gpt-anthropic-key",
+            APIType.deepseek: "gpt-deepseek-key",
+        }[api_type]
         print(f"Error: {api_name} API key not set.")
-        key_var = (
-            "gpt-openai-key" if api_type == APIType.openai else "gpt-anthropic-key"
-        )
         print(f'Add (setq {key_var} "sk-...") to your Emacs init.el file.')
         sys.exit(1)
 
@@ -56,12 +69,13 @@ def _build_messages_for_openai(
     matches: Iterator[re.Match[AnyStr]], instructions: str | None
 ) -> list[dict[str, str]]:
     messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    if instructions:
+        messages.append({"role": "system", "content": instructions})
     for m in matches:
         role = str(m.group(1).lower())
         content = str(m.group(2).strip())
-        messages.append({"role": role, "content": content})
-    if instructions:
-        messages.append({"role": "system", "content": instructions})
+        if content:
+            messages.append({"role": role, "content": content})
     return messages
 
 
@@ -79,6 +93,8 @@ def _build_messages_for_anthropic(
     for m in matches:
         role = AnthropicRole(m.group(1).lower()).value
         content = str(m.group(2).strip())
+        if not content:
+            continue
         if role == AnthropicRole.user:
             current_user_message += "\n\n" + content
         else:
@@ -95,6 +111,18 @@ def _build_messages_for_anthropic(
     return messages
 
 
+def _setup_client(
+    api_key: str, api_type: APIType
+) -> openai.OpenAI | anthropic.Anthropic:
+    match api_type:
+        case APIType.openai:
+            return openai.OpenAI(api_key=api_key)
+        case APIType.deepseek:
+            return openai.OpenAI(api_key=api_key, base_url=DEEPSEEK_URL)
+        case APIType.anthropic:
+            return anthropic.Anthropic(api_key=api_key)
+
+
 def _stream_chat_completions(
     prompt: str,
     api_key: str,
@@ -108,23 +136,19 @@ def _stream_chat_completions(
     _ensure_api_type_is_available(api_type)
     _ensure_api_key_is_set(api_key, api_type)
 
-    client = (
-        openai.OpenAI(api_key=api_key)
-        if api_type == APIType.openai
-        else anthropic.Anthropic(api_key=api_key)
-    )
+    client = _setup_client(api_key, api_type)
 
     pattern = re.compile(
         r"^(User|Assistant):(.+?)(?=\n(?:User|Assistant):|\Z)", re.MULTILINE | re.DOTALL
     )
     matches = pattern.finditer(prompt)
 
-    if api_type == APIType.openai:
+    if api_type in (APIType.openai, APIType.deepseek):
         messages = _build_messages_for_openai(matches, instructions)
     else:
         messages = _build_messages_for_anthropic(matches)
     try:
-        if api_type == APIType.openai:
+        if api_type in (APIType.openai, APIType.deepseek):
             return client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -151,7 +175,7 @@ def _stream_chat_completions(
 def _print_and_collect_completions(stream, api_type: APIType) -> str:
     """Print and collect completions from the stream."""
     completion_text = ""
-    if api_type == APIType.openai:
+    if api_type in (APIType.openai, APIType.deepseek):
         for chunk in stream:
             if chunk.choices[0].delta.content:
                 text = chunk.choices[0].delta.content

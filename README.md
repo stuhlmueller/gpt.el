@@ -5,11 +5,16 @@
 # le-gpt.el
 [![MELPA](https://melpa.org/packages/le-gpt-badge.svg)](https://melpa.org/#/le-gpt)
 
-le-gpt.el is a comprehensive Emacs package for interacting with large language models like GPT-4 and Claude 3.5 Sonnet. It's a feature-rich fork of [gpt.el](https://github.com/stuhlmueller/gpt.el) that adds project awareness, completion, region transform, and more to come.
+le-gpt.el is a comprehensive Emacs package for interacting with large language models from OpenAI, Anthropic, and Deepseek. It's a feature-rich fork of [gpt.el](https://github.com/stuhlmueller/gpt.el) that adds project awareness, completion, region transform, and more to come.
 
 The aim is to make sure Emacs stays up-to-date with modern GPT support, essentially aiming for a CursorAI for Emacs.
 
+## Changelog
+
+  - 0.4.0: Add DeepSeek support
+
 ## Features
+
 
 - **Chat Interface**: Create and manage multiple chat sessions with GPT. Use `M-x le-gpt-chat` to start a session. Key bindings in chat buffers include:
   - `C-c C-c`: Send follow-up command
@@ -59,8 +64,9 @@ You'll need Python packages for the API clients:
 pip install openai anthropic jsonlines
 ```
 You don't need to install all of them, but minimally `openai` or `anthropic`.
+For `deepseek` you'll need `openai`.
 
-You'll also need API keys from [OpenAI](https://beta.openai.com/) and/or [Anthropic](https://console.anthropic.com).
+You'll also need API keys from [OpenAI](https://beta.openai.com/) and/or [Anthropic](https://console.anthropic.com) and/or [Deepseek](https://platform.deepseek.com/api_keys).
 
 You'll also need [markdown-mode](https://github.com/jrblevin/markdown-mode) for displaying the chat conversations nicely.
 
@@ -106,6 +112,7 @@ Basic configuration:
 ;; API Keys
 (setq le-gpt-openai-key "sk-...")
 (setq le-gpt-anthropic-key "sk-ant-...")
+(setq le-gpt-deepseek-key "sk-...")
 
 ;; Model Parameters (optional)
 (setq le-gpt-model "gpt-4o")
@@ -173,7 +180,6 @@ Contributions are welcome! Please feel free to submit issues and pull requests o
 
 ### Feature roadmap
 
- - [ ] More models, e.g., groq (waiting for aisuite to support streaming)
  - [ ] Ability to generate images (?)
  - [ ] Add all files of the current project as context (?)
  - [ ] Ability to let GPT decide which context files it needs

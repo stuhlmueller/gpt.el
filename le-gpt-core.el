@@ -4,7 +4,7 @@
 ;; SPDX-License-Identifier: MIT
 
 ;;; Commentary:
-;; 
+;;
 
 ;;; Code:
 
@@ -16,7 +16,7 @@
   "The path to the Python script used by gpt.el.")
 
 (defcustom le-gpt-model "gpt-4o"
-  "The model to use (e.g., `gpt-4', `claude-3-5-sonnet-20240620')."
+  "The model to use (e.g., `gpt-4', `claude-3-5-sonnet-20240620', `deepseek-chat')."
   :type 'string
   :group 'le-gpt)
 
@@ -40,9 +40,15 @@
   :type 'string
   :group 'le-gpt)
 
-(defcustom le-gpt-api-type 'openai
-  "The type of API to use.  Either \='openai or \='anthropic."
+(defcustom le-gpt-deepseek-key "NOT SET"
+  "The Deepseek API key to use."
+  :type 'string
+  :group 'le-gpt)
+
+(defcustom le-gpt-api-type 'anthropic
+  "The type of API to use.  \='openai, \='anthropic, or \='deepseek."
   :type '(choice (const :tag "OpenAI" openai)
+                 (const :tag "Deepseek" deepseek)
                  (const :tag "Anthropic" anthropic))
   :group 'le-gpt)
 
@@ -57,7 +63,11 @@
   "Create a GPT process with PROMPT-FILE, and OUTPUT-BUFFER.
 Use `le-gpt-python-path' and `le-gpt--script-path' to execute
 the command with necessary arguments."
-  (let* ((api-key (if (eq le-gpt-api-type 'openai) le-gpt-openai-key le-gpt-anthropic-key))
+  (let* ((api-key (if (eq le-gpt-api-type 'openai)
+                      le-gpt-openai-key
+                    (if (eq le-gpt-api-type 'anthropic)
+                        le-gpt-anthropic-key
+                      le-gpt-deepseek-key)))
          (api-type-str (symbol-name le-gpt-api-type))
          (process (make-process
                    :name "le-gpt-process"
@@ -121,9 +131,11 @@ INHERIT-INPUT-METHOD have same meaning as in `completing-read'."
 
 ;; Model switching functionality
 (defun le-gpt-switch-model ()
-  "Switch between OpenAI and Anthropic models."
+  "Switch between OpenAI, Anthropic, and Deepseek models."
   (interactive)
   (let* ((models '(("GPT-4o" . (openai . "gpt-4o"))
+                   ("DeepSeekV3" . (deepseek . "deepseek-chat"))
+                   ("DeepSeekR1" . (deepseek . "deepseek-reasoner"))
                    ("Claude 3.5 Sonnet" . (anthropic . "claude-3-5-sonnet-latest"))))
          (choice (completing-read "Choose model: " (mapcar #'car models) nil t))
          (model-info (cdr (assoc choice models))))

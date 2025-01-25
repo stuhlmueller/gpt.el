@@ -25,7 +25,7 @@ The generated completion is displayed directly in buffer."
          (buffer-rest (buffer-substring-no-properties start-point (point-max)))
          (project-context (le-gpt--get-project-context temp-context-files))
          (prompt (concat (when project-context (concat "User:\n\n" project-context))
-                         "User: " buffer-content "<cursor>" buffer-rest "\n\nUser: " le-gpt-complete-at-point-instructions))
+                         "User: " buffer-content "<cursor>" buffer-rest "\n\nGPTInstructions: " le-gpt-complete-at-point-instructions))
          (prompt-file (le-gpt--create-prompt-file prompt))
          (insertion-marker (make-marker))
          (process (le-gpt--make-process prompt-file nil)))
