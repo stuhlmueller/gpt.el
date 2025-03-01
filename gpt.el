@@ -37,7 +37,7 @@
 (defvar gpt-api-type 'openai
   "The type of API to use. Either 'openai or 'anthropic.")
 
-(defvar gpt-model "claude-3-5-sonnet-latest"
+(defvar gpt-model "claude-3-7-sonnet-latest"
   "The model to use (e.g., 'gpt-4o', 'claude-3-5-sonnet-latest').")
 
 (defvar gpt-max-tokens "2000"
