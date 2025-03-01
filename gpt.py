@@ -9,7 +9,16 @@ import os
 import argparse
 import re
 from pathlib import Path
-from typing import Literal, Union, TYPE_CHECKING, cast, Iterator
+from typing import (
+    Literal,
+    Union,
+    TYPE_CHECKING,
+    cast,
+    Iterator,
+    Optional,
+    Any,
+    Match,
+)
 
 if TYPE_CHECKING:
     from openai.types.chat import ChatCompletion as OpenAIChatCompletion
@@ -26,8 +35,10 @@ CompletionStream = Union[
     Iterator["AnthropicMessageStreamEvent"],  # Anthropic streaming response
 ]
 
-openai = None
-anthropic = None
+# These modules are imported conditionally to handle missing dependencies gracefully
+openai: Optional[Any] = None
+anthropic: Optional[Any] = None
+jsonlines: Optional[Any] = None
 
 try:
     import openai
@@ -42,19 +53,32 @@ except ImportError:
 try:
     import jsonlines
 except ImportError:
-    jsonlines = None
+    pass
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser()
+    """Parse command line arguments.
+
+    Returns:
+        Namespace containing the parsed command line arguments
+    """
+    parser = argparse.ArgumentParser(
+        description="Generate text completions using OpenAI or Anthropic APIs",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument("api_key", help="The API key to use for the selected API.")
     parser.add_argument(
         "model", help="The model to use (e.g., gpt-4o or claude-3-sonnet-latest)"
     )
-    parser.add_argument("max_tokens", help="Max tokens value to be used with the API.")
     parser.add_argument(
-        "temperature", help="Temperature value to be used with the API."
+        "max_tokens",
+        help="Max tokens value to be used with the API.",
+        type=str,  # Will be converted to int later
+    )
+    parser.add_argument(
+        "temperature",
+        help="Temperature value to be used with the API.",
+        type=str,  # Will be converted to float later
     )
     parser.add_argument(
         "api_type",
@@ -67,7 +91,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def read_input_text() -> str:
-    """Read input text from stdin."""
+    """Read input text from stdin.
+
+    Returns:
+        The text read from standard input
+    """
     return sys.stdin.read()
 
 
@@ -78,7 +106,21 @@ def stream_openai_chat_completions(
     max_tokens: str,
     temperature: str,
 ) -> Union["OpenAIStream[OpenAIChatCompletionChunk]", "OpenAIChatCompletion"]:
-    """Stream chat completions from the OpenAI API."""
+    """Stream chat completions from the OpenAI API.
+
+    Args:
+        prompt: The prompt text with User/Assistant conversation format
+        api_key: OpenAI API key
+        model: Model identifier (e.g., 'gpt-4o', 'o1', 'o3')
+        max_tokens: Maximum tokens to generate (as string, will be converted to int)
+        temperature: Sampling temperature (as string, will be converted to float)
+
+    Returns:
+        Either a streaming or non-streaming completion response
+
+    Raises:
+        SystemExit: On configuration or API errors
+    """
     if openai is None:
         print("Error: OpenAI Python package is not installed.")
         print("Please install by running `pip install openai'.")
@@ -93,21 +135,23 @@ def stream_openai_chat_completions(
 
     client = openai.OpenAI(api_key=api_key)
 
-    messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    messages: list[dict[str, str]] = [
+        {"role": "system", "content": "You are a helpful assistant."}
+    ]
     pattern = re.compile(
         r"^(User|Assistant):(.+?)(?=\n(?:User|Assistant):|\Z)", re.MULTILINE | re.DOTALL
     )
-    matches = pattern.finditer(prompt)
+    matches: Iterator[Match[str]] = pattern.finditer(prompt)
     for match in matches:
         role = match.group(1).lower()
         content = match.group(2).strip()
         messages.append({"role": role, "content": content})
 
-    params = {
+    params: dict[str, Any] = {
         "model": model,
         "messages": messages,
     }
-    if model not in {"o1", "o3"}:
+    if model not in {"o1", "o3", "o3-mini"}:
         params.update(
             {
                 "max_tokens": int(max_tokens),
@@ -121,6 +165,9 @@ def stream_openai_chat_completions(
     except openai.APIError as error:
         print(f"Error: {error}")
         sys.exit(1)
+    except Exception as error:
+        print(f"Unexpected error: {error}")
+        sys.exit(1)
 
 
 def stream_anthropic_chat_completions(
@@ -130,7 +177,21 @@ def stream_anthropic_chat_completions(
     max_tokens: str,
     temperature: str,
 ) -> Iterator["AnthropicMessageStreamEvent"]:
-    """Stream chat completions from the Anthropic API."""
+    """Stream chat completions from the Anthropic API.
+
+    Args:
+        prompt: The prompt text with User/Assistant conversation format
+        api_key: Anthropic API key
+        model: Model identifier (e.g., 'claude-3-sonnet-latest')
+        max_tokens: Maximum tokens to generate (as string, will be converted to int)
+        temperature: Sampling temperature (as string, will be converted to float)
+
+    Returns:
+        Iterator of message stream events from the Anthropic API
+
+    Raises:
+        SystemExit: On configuration or API errors
+    """
     if anthropic is None:
         print("Error: Anthropic Python package is not installed.")
         print("Please install by running `pip install anthropic'.")
@@ -145,15 +206,15 @@ def stream_anthropic_chat_completions(
 
     client = anthropic.Anthropic(api_key=api_key)
 
-    messages = []
+    messages: list[dict[str, str]] = []
     pattern = re.compile(
         r"^(User|Assistant):(.+?)(?=\n(?:User|Assistant):|\Z)", re.MULTILINE | re.DOTALL
     )
-    matches = pattern.finditer(prompt)
+    matches: Iterator[Match[str]] = pattern.finditer(prompt)
 
     # Anthropic requires alternating user and assistant messages,
     # so we group user messages together
-    current_user_message = None
+    current_user_message: Optional[str] = None
 
     for match in matches:
         role = "user" if match.group(1).lower() == "user" else "assistant"
@@ -184,14 +245,25 @@ def stream_anthropic_chat_completions(
     except anthropic.APIError as error:
         print(f"Error: {error}")
         sys.exit(1)
+    except Exception as error:
+        print(f"Unexpected error: {error}")
+        sys.exit(1)
 
 
 def print_and_collect_completions(
     stream: CompletionStream,
     api_type: APIType,
 ) -> str:
-    """Print and collect completions from the stream."""
-    completion_text = ""
+    """Print and collect completions from the stream.
+
+    Args:
+        stream: The completion stream from either OpenAI or Anthropic API
+        api_type: The type of API used ('openai' or 'anthropic')
+
+    Returns:
+        The complete text generated by the model
+    """
+    completion_text: str = ""
 
     if api_type == "openai":
         stream = cast(
@@ -220,22 +292,44 @@ def print_and_collect_completions(
                 if delta_text:
                     print(delta_text, end="", flush=True)
                     completion_text += delta_text
+    else:
+        # This should never happen due to validation in main()
+        raise ValueError(f"Unsupported API type: {api_type}")
 
     return completion_text
 
 
 def write_to_jsonl(prompt: str, completion: str, path: Path) -> None:
-    """Write the prompt and completion to a jsonl file."""
+    """Write the prompt and completion to a jsonl file.
+
+    Args:
+        prompt: The prompt text sent to the model
+        completion: The completion text generated by the model
+        path: The path to the output JSONL file
+
+    Raises:
+        SystemExit: On file I/O errors
+    """
     if jsonlines is None:
         return
+
+    # Create the file if it doesn't exist
     if not os.path.exists(path):
-        with open(path, "w", encoding="utf-8"):
-            pass  # Create the file
+        try:
+            with open(path, "w", encoding="utf-8"):
+                pass  # Create the file
+        except IOError as error:
+            print(f"Error creating file: {error}")
+            sys.exit(1)
+
     try:
         with jsonlines.open(path, mode="a") as writer:
             writer.write({"prompt": prompt, "completion": completion})
     except IOError as error:
-        print(f"Error: {error}")
+        print(f"Error writing to file: {error}")
+        sys.exit(1)
+    except Exception as error:
+        print(f"Unexpected error: {error}")
         sys.exit(1)
 
 
@@ -243,11 +337,26 @@ def main() -> None:
     """
     Main function to read a prompt from a file, generate completions
     using the specified API, and save the completions to a JSONL file.
-    """
-    args = parse_args()
-    with open(args.prompt_file, "r") as prompt_file:
-        prompt = prompt_file.read()
 
+    This function handles the overall workflow:
+    1. Parse command line arguments
+    2. Read the prompt from the specified file
+    3. Generate completion using the appropriate API
+    4. Process and collect the completion text
+    5. Save the prompt and completion to a JSONL file
+    """
+    # Parse command-line arguments
+    args: argparse.Namespace = parse_args()
+
+    # Read prompt from file
+    try:
+        with open(args.prompt_file, "r", encoding="utf-8") as prompt_file:
+            prompt: str = prompt_file.read()
+    except IOError as error:
+        print(f"Error reading prompt file: {error}")
+        sys.exit(1)
+
+    # Generate completion based on API type
     if args.api_type == "openai":
         stream = stream_openai_chat_completions(
             prompt, args.api_key, args.model, args.max_tokens, args.temperature
@@ -260,8 +369,11 @@ def main() -> None:
         print(f"Error: Unsupported API type '{args.api_type}'")
         sys.exit(1)
 
-    completion_text = print_and_collect_completions(stream, args.api_type)
-    file_name = Path.home() / ".emacs_prompts_completions.jsonl"
+    # Process and collect completion text
+    completion_text: str = print_and_collect_completions(stream, args.api_type)
+
+    # Save to JSONL file
+    file_name: Path = Path.home() / ".emacs_prompts_completions.jsonl"
     write_to_jsonl(prompt, completion_text, file_name)
 
 
