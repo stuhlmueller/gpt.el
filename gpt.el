@@ -485,8 +485,10 @@ CONTEXT-MODE is passed to `gpt-chat'."
   "Switch between OpenAI and Anthropic models."
   (interactive)
   (let* ((models '(("GPT-4o" . (openai . "gpt-4o"))
+                   ("GPT-4.5" . (openai . "gpt-4.5-preview"))
                    ("o1" . (openai . "o1"))
-                   ("Claude 3.5 Sonnet" . (anthropic . "claude-3-5-sonnet-latest"))))
+                   ("o3-mini" . (openai . "o3-mini"))
+                   ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))))
          (choice (completing-read "Choose model: " (mapcar #'car models) nil t))
          (model-info (cdr (assoc choice models))))
     (setq gpt-api-type (car model-info)
