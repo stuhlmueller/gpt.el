@@ -284,6 +284,17 @@ CONTEXT-MODE can be:
   (interactive)
   (gpt-chat-completion 'all-buffers))
 
+(defun gpt-chat-clipboard ()
+  "Run GPT command with clipboard content as context."
+  (interactive)
+  (let* ((clipboard-text (current-kill 0))
+         (command (gpt-read-command nil t))
+         (output-buffer (gpt-create-output-buffer command)))
+    (switch-to-buffer-other-window output-buffer)
+    (insert "User:\n\nClipboard content:\n\n```\n" clipboard-text "\n```\n\n")
+    (gpt-insert-command command)
+    (gpt-run-buffer output-buffer)))
+
 (defvar gpt-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Say only the title, nothing else. No quotes."
   "The instruction given to GPT to generate a buffer name.")
 
