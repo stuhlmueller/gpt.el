@@ -16,7 +16,7 @@
   "The path to the Python script used by gpt.el.")
 
 (defcustom le-gpt-model "gpt-4o"
-  "The model to use (e.g., `gpt-4', `claude-3-5-sonnet-20240620', `deepseek-chat')."
+  "The model to use (e.g., `gpt-4', `claude-3-7-sonnet-20240620', `deepseek-chat')."
   :type 'string
   :group 'le-gpt)
 
@@ -136,7 +136,7 @@ INHERIT-INPUT-METHOD have same meaning as in `completing-read'."
   (let* ((models '(("GPT-4o" . (openai . "gpt-4o"))
                    ("DeepSeekV3" . (deepseek . "deepseek-chat"))
                    ("DeepSeekR1" . (deepseek . "deepseek-reasoner"))
-                   ("Claude 3.5 Sonnet" . (anthropic . "claude-3-5-sonnet-latest"))))
+                   ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))))
          (choice (completing-read "Choose model: " (mapcar #'car models) nil t))
          (model-info (cdr (assoc choice models))))
     (setq le-gpt-api-type (car model-info)
