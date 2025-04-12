@@ -4,17 +4,17 @@
 
 # gpt.el
 
-gpt.el is a simple Emacs package that lets you interact with instruction-following language models like GPT-4 and Claude 3.5 Sonnet from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
+gpt.el is a simple Emacs package that lets you interact with instruction-following language models like GPT-4o, Claude 3.7 Sonnet, and Google Gemini from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
 
 ## Installation
 
-To use gpt.el, you need to have at least one of the `openai` and `anthropic` Python packges as well as `jsonlines`. You'll also need valid API keys for OpenAI or Anthropic. You can install the packages with:
+To use gpt.el, you need to have at least one of the `openai`, `anthropic`, or `google-genai` Python packages as well as `jsonlines`. You'll also need valid API keys for OpenAI, Anthropic, or Google. You can install the packages with:
 
 ```
-pip install openai anthropic jsonlines
+pip install openai anthropic google-genai jsonlines
 ```
 
-You can get an OpenAI API key from https://beta.openai.com/ and an Anthropic API key from https://console.anthropic.com.
+You can get an OpenAI API key from https://beta.openai.com/, an Anthropic API key from https://console.anthropic.com, and a Google Gemini API key from https://aistudio.google.com/app/apikey.
 
 ### From MELPA package repository
 
@@ -62,25 +62,30 @@ Alternatively, you can use `use-package`:
 
 ## Configuration
 
-You need to set the variables `gpt-openai-key` and/or `gpt-anthropic-key` to your respective API keys to use gpt.el. For example:
+You need to set at least one of the variables `gpt-openai-key`, `gpt-anthropic-key`, or `gpt-google-key` to your respective API keys to use gpt.el. For example:
 
 ```elisp
 (setq gpt-openai-key "sk-Aes.....AV8qzL")
 (setq gpt-anthropic-key "sk-ant-api03-...")
+(setq gpt-google-key "AIzaSy...")
 ```
 
 Optionally, you can customize the model parameters by setting the variables `gpt-model`, `gpt-max-tokens`, and `gpt-temperature`. The defaults are:
 
 ```elisp
-(setq gpt-model "gpt-4o")
+(setq gpt-model "claude-3-7-sonnet-latest")
 (setq gpt-max-tokens 2000)
 (setq gpt-temperature 0)
 ```
 
-By default, gpt.el uses the OpenAI API. To switch to the Anthropic API, you can set:
+By default, gpt.el uses the OpenAI API. To switch to the Anthropic or Google Gemini API, you can set:
 
 ```elisp
+;; For Anthropic
 (setq gpt-api-type 'anthropic)
+
+;; For Google Gemini
+(setq gpt-api-type 'google)
 ```
 
 ## Usage
@@ -111,7 +116,7 @@ You can bind these functions to keys of your choice, for example:
 When you invoke any of these commands, you'll see a prompt that shows what context will be included. For example:
 
 ```
-claude-3-5-sonnet-latest [all buffers + selection]:
+claude-3-7-sonnet-latest [all buffers + selection]:
 ```
 
 The command you enter can be any text. For example:
