@@ -3,7 +3,7 @@
 ;; Copyright (C) 2022 Andreas Stuhlmueller
 
 ;; Author: Andreas Stuhlmueller <emacs@stuhlmueller.org>
-;; Version: 1.4
+;; Version: 2.0
 ;; Keywords: openai, anthropic, claude, language, copilot, convenience, tools
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
