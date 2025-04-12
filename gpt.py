@@ -27,17 +27,20 @@ if TYPE_CHECKING:
     )
     from openai import Stream as OpenAIStream
     from anthropic.types import MessageStreamEvent as AnthropicMessageStreamEvent
+    from google.genai.types import GenerateContentResponse
 
-APIType = Literal["openai", "anthropic"]
+APIType = Literal["openai", "anthropic", "google"]
 CompletionStream = Union[
     "OpenAIStream[OpenAIChatCompletionChunk]",  # OpenAI streaming response
     "OpenAIChatCompletion",  # OpenAI non-streaming response (o1/o3)
     Iterator["AnthropicMessageStreamEvent"],  # Anthropic streaming response
+    Iterator["GenerateContentResponse"],  # Google streaming response
 ]
 
 # These modules are imported conditionally to handle missing dependencies gracefully
 openai: Optional[Any] = None
 anthropic: Optional[Any] = None
+genai: Optional[Any] = None
 jsonlines: Optional[Any] = None
 
 try:
@@ -47,6 +50,12 @@ except ImportError:
 
 try:
     import anthropic
+except ImportError:
+    pass
+
+try:
+    import google.genai as genai
+    from google.genai import types as genai_types
 except ImportError:
     pass
 
@@ -63,12 +72,12 @@ def parse_args() -> argparse.Namespace:
         Namespace containing the parsed command line arguments
     """
     parser = argparse.ArgumentParser(
-        description="Generate text completions using OpenAI or Anthropic APIs",
+        description="Generate text completions using OpenAI, Anthropic, or Google APIs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("api_key", help="The API key to use for the selected API.")
     parser.add_argument(
-        "model", help="The model to use (e.g., gpt-4o or claude-3-sonnet-latest)"
+        "model", help="The model to use (e.g., gpt-4o, claude-3-sonnet-latest, google-2.5.pro-exp-03-25)"
     )
     parser.add_argument(
         "max_tokens",
@@ -83,8 +92,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "api_type",
         type=str,
-        choices=("openai", "anthropic"),
-        help="The type of API to use: 'openai' or 'anthropic'.",
+        choices=("openai", "anthropic", "google"),
+        help="The type of API to use: 'openai', 'anthropic', or 'google'.",
     )
     parser.add_argument("prompt_file", help="The file that contains the prompt.")
     return parser.parse_args()
@@ -250,6 +259,95 @@ def stream_anthropic_chat_completions(
         sys.exit(1)
 
 
+def stream_google_chat_completions(
+    prompt: str,
+    api_key: str,
+    model: str,
+    max_tokens: str,
+    temperature: str,
+) -> Iterator[Any]:
+    """Stream chat completions from the Google Gemini API.
+
+    Args:
+        prompt: The prompt text with User/Assistant conversation format
+        api_key: Google API key
+        model: Model identifier (e.g., 'gemini-2.5-pro-exp-03-25')
+        max_tokens: Maximum tokens to generate (as string, will be converted to int)
+        temperature: Sampling temperature (as string, will be converted to float)
+
+    Returns:
+        Iterator of generation chunks from the Google Gemini API
+
+    Raises:
+        SystemExit: On configuration or API errors
+    """
+    if genai is None:
+        print("Error: Google Generative AI Python package is not installed.")
+        print("Please install by running `pip install google-genai'.")
+        sys.exit(1)
+
+    if api_key == "NOT SET":
+        print("Error: Google API key not set.")
+        print(
+            'Add (setq gpt-google-key "YOUR_API_KEY") to your Emacs init.el file.'
+        )
+        sys.exit(1)
+
+    # Create Google client with API key
+    client = genai.Client(api_key=api_key)
+
+    # Parse the prompt to extract the conversation
+    contents = []
+    
+    # Check if this is a conversation or a simple prompt
+    if "User:" in prompt or "Human:" in prompt or "Assistant:" in prompt or "Model:" in prompt:
+        # Parse conversation with roles
+        pattern = re.compile(
+            r"^(User|Human|Assistant|Model):(.+?)(?=\n(?:User|Human|Assistant|Model):|\Z)", 
+            re.MULTILINE | re.DOTALL
+        )
+        matches = list(pattern.finditer(prompt))
+        
+        for match in matches:
+            role_text = match.group(1).lower()
+            message_text = match.group(2).strip()
+            
+            # Map the role (user/human -> user, assistant/model -> model)
+            if role_text in ["user", "human"]:
+                # Create a user content
+                content = genai_types.UserContent(
+                    parts=[genai_types.Part.from_text(text=message_text)]
+                )
+            else:
+                # Create a model content
+                content = genai_types.ModelContent(
+                    parts=[genai_types.Part.from_text(text=message_text)]
+                )
+            
+            contents.append(content)
+    else:
+        # Simple prompt, just use the text directly
+        # The SDK will convert it to a UserContent automatically
+        contents = prompt
+
+    try:
+        # Use the client model API with the correct parameters
+        response = client.models.generate_content_stream(
+            model=model,
+            contents=contents,
+            config=genai_types.GenerateContentConfig(
+                # Increase max_output_tokens to ensure sufficient generation space
+                max_output_tokens=max(32000, int(max_tokens)),
+                temperature=float(temperature),
+            ),
+        )
+        
+        return response
+    except Exception as error:
+        print(f"Error calling Google Gemini API: {error}")
+        sys.exit(1)
+
+
 def print_and_collect_completions(
     stream: CompletionStream,
     api_type: APIType,
@@ -257,8 +355,8 @@ def print_and_collect_completions(
     """Print and collect completions from the stream.
 
     Args:
-        stream: The completion stream from either OpenAI or Anthropic API
-        api_type: The type of API used ('openai' or 'anthropic')
+        stream: The completion stream from either OpenAI, Anthropic, or Google API
+        api_type: The type of API used ('openai', 'anthropic', or 'google')
 
     Returns:
         The complete text generated by the model
@@ -285,17 +383,34 @@ def print_and_collect_completions(
                     completion_text += text
     elif api_type == "anthropic":
         stream = cast(Iterator["AnthropicMessageStreamEvent"], stream)
+        current_completion = ""
         for chunk in stream:
             if chunk.type == "content_block_delta":
                 delta = chunk.delta
                 delta_text = getattr(delta, "text", None)
                 if delta_text:
                     print(delta_text, end="", flush=True)
-                    completion_text += delta_text
+                    current_completion += delta_text
+        return current_completion
+    elif api_type == "google":
+        # Use proper typing for Google API responses
+        stream = cast(Iterator["GenerateContentResponse"], stream)
+        completion_text = ""
+        try:
+            for chunk in stream:
+                # Extract text directly using the text property as shown in example
+                if hasattr(chunk, "text") and chunk.text is not None:
+                    print(chunk.text, end="", flush=True)
+                    completion_text += chunk.text
+        except Exception as e:
+            print(f"\nError processing Google Gemini response: {e}", file=sys.stderr)
+            
+        return completion_text
     else:
         # This should never happen due to validation in main()
         raise ValueError(f"Unsupported API type: {api_type}")
 
+    # This return covers OpenAI case
     return completion_text
 
 
@@ -363,6 +478,10 @@ def main() -> None:
         )
     elif args.api_type == "anthropic":
         stream = stream_anthropic_chat_completions(
+            prompt, args.api_key, args.model, args.max_tokens, args.temperature
+        )
+    elif args.api_type == "google":
+        stream = stream_google_chat_completions(
             prompt, args.api_key, args.model, args.max_tokens, args.temperature
         )
     else:
