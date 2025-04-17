@@ -4,7 +4,7 @@
 
 # gpt.el
 
-gpt.el is a simple Emacs package that lets you interact with instruction-following language models like GPT-4o, Claude 3.7 Sonnet, and Google Gemini from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
+gpt.el is a simple Emacs package that lets you interact with instruction-following language models like GPT-4.1, Claude 3.7 Sonnet, and Google Gemini from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
 
 ## Installation
 
@@ -112,68 +112,3 @@ You can bind these functions to keys of your choice, for example:
 (global-set-key (kbd "M-C-g") 'gpt-chat)
 (global-set-key (kbd "M-C-b") 'gpt-chat-all-buffers)
 ```
-
-When you invoke any of these commands, you'll see a prompt that shows what context will be included. For example:
-
-```
-claude-3-7-sonnet-latest [all buffers + selection]:
-```
-
-The command you enter can be any text. For example:
-
-```
-Write a haiku about Emacs.
-```
-
-If you have an active region, it will always be included as additional context. The cursor position in the buffer is marked with `<cursor/>` to help the model understand the context better.
-
-The output will be displayed in a temporary or named buffer, with the same major mode as the original buffer. The output will be streamed as it is produced by the model. You can switch back to the original buffer at any time.
-
-### Text Completion
-
-For completing text at the cursor position, you can use:
-
-1. `gpt-chat-completion`: Prompts for context mode
-2. `gpt-chat-completion-current-buffer`: Uses current buffer as context
-3. `gpt-chat-completion-all-buffers`: Uses all visible buffers as context
-
-These commands will instruct the model to continue writing from the cursor position, matching the style and format of the existing text.
-
-### Buffer Display
-
-By default, output is shown in a buffer named after the first few characters of your command. You have two options for buffer naming:
-
-1. Automatic naming: The buffer name will be truncated to `gpt-buffer-name-length` characters
-2. GPT-generated naming: Use `C-c C-t` (`gpt-generate-buffer-name`) to have GPT generate a meaningful name based on your command
-
-### Markdown Support
-
-The output buffer uses markdown-mode if available, falling back to text-mode if not. This provides better syntax highlighting for code blocks and other markdown elements.
-
-### Buffer Commands
-
-In the gpt-output buffer:
-
-- `C-c C-c`: Run a follow-up command
-- `C-c C-b`: Copy the content of the code block at point
-- `C-c C-p`: Toggle visibility of "User:", "Human:", and "Assistant:" prefixes
-- `C-c C-m`: Switch between different models
-- `C-c C-t`: Generate a meaningful buffer name using GPT
-- `C-c C-q`: Close the current GPT buffer
-- `C-c C-x`: Close all GPT buffers
-
-### Follow-up Commands
-
-In the gpt-output buffer, `C-c C-c` is bound to running a follow-up command that is provided the previous commands and outputs as input. For example, you can run a command "Explain this in more detail" to get more information about the previous response.
-
-### History
-
-You can view the command history by calling `gpt-display-command-history`, which will show the commands in a buffer. You can also export the command history to a file by calling `gpt-export-history`, which will prompt you for a file name. To clear the command history, use the `gpt-clear-command-history` function.
-
-## Contributing
-
-Contributions to gpt.el are welcome! Please feel free to submit pull requests or create issues for bugs and feature requests.
-
-## License
-
-gpt.el is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for details.

@@ -63,12 +63,11 @@
 (defun gpt-switch-model ()
   "Switch between OpenAI, Anthropic, and Google models."
   (interactive)
-  (let* ((models '(("GPT-4o" . (openai . "gpt-4o"))
+  (let* ((models '(("GPT-4.1" . (openai . "gpt-4.1"))
                    ("GPT-4.5" . (openai . "gpt-4.5-preview"))
-                   ("o1" . (openai . "o1"))
-                   ("o3-mini" . (openai . "o3-mini"))
+                   ("o3" . (openai . "o3"))
+                   ("o4-mini" . (openai . "o4-mini"))
                    ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
-                   ;; Add Google models
                    ("Gemini 2.5 Pro Exp" . (google . "gemini-2.5-pro-exp-03-25"))))
          (choice (completing-read "Choose model: " (mapcar #'car models) nil t nil nil (car (rassoc (cons gpt-api-type gpt-model) models))))
          (model-info (cdr (assoc choice models))))
