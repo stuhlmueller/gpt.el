@@ -68,7 +68,7 @@
                    ("o3" . (openai . "o3"))
                    ("o4-mini" . (openai . "o4-mini"))
                    ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
-                   ("Gemini 2.5 Pro Exp" . (google . "gemini-2.5-pro-exp-03-25"))))
+                   ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-03-25"))))
          (choice (completing-read "Choose model: " (mapcar #'car models) nil t nil nil (car (rassoc (cons gpt-api-type gpt-model) models))))
          (model-info (cdr (assoc choice models))))
     (if model-info
