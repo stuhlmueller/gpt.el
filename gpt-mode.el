@@ -18,6 +18,25 @@
 
 (require 'gpt-core)
 
+(defcustom gpt-available-models
+  '(("GPT-4.1" . (openai . "gpt-4.1"))
+    ("GPT-4.5" . (openai . "gpt-4.5-preview"))
+    ("o3" . (openai . "o3"))
+    ("o4-mini" . (openai . "o4-mini"))
+    ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
+    ("Claude 4 Sonnet" . (anthropic . "claude-sonnet-4-20250514"))
+    ("Claude 4 Opus" . (anthropic . "claude-opus-4-20250514"))
+    ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-03-25")))
+  "Available models for GPT commands.
+Each entry is a cons cell where the car is the display name and
+the cdr is a cons cell of (API-TYPE . MODEL-ID)."
+  :type '(alist :key-type string
+                :value-type (cons (choice (const openai)
+                                          (const anthropic)
+                                          (const google))
+                                  string))
+  :group 'gpt)
+
 (defface gpt-input-face
   '((t :inherit comint-highlight-prompt))
   "Face for the input of the GPT commands.")
@@ -63,14 +82,11 @@
 (defun gpt-switch-model ()
   "Switch between OpenAI, Anthropic, and Google models."
   (interactive)
-  (let* ((models '(("GPT-4.1" . (openai . "gpt-4.1"))
-                   ("GPT-4.5" . (openai . "gpt-4.5-preview"))
-                   ("o3" . (openai . "o3"))
-                   ("o4-mini" . (openai . "o4-mini"))
-                   ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
-                   ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-03-25"))))
-         (choice (completing-read "Choose model: " (mapcar #'car models) nil t nil nil (car (rassoc (cons gpt-api-type gpt-model) models))))
-         (model-info (cdr (assoc choice models))))
+  (let* ((current-model-name (car (rassoc (cons gpt-api-type gpt-model) gpt-available-models)))
+         (choice (completing-read "Choose model: " 
+                                  (mapcar #'car gpt-available-models) 
+                                  nil t nil nil current-model-name))
+         (model-info (cdr (assoc choice gpt-available-models))))
     (if model-info
         (progn
           (setq gpt-api-type (car model-info)
@@ -136,6 +152,18 @@
   (interactive)
   (gpt-chat-completion 'all-buffers))
 
+(defun gpt-regenerate-response ()
+  "Regenerate the last assistant response."
+  (interactive)
+  (let ((start (save-excursion
+                 (if (re-search-backward "^Assistant:" nil t)
+                     (point)
+                   (point-min))))
+        (end (point-max)))
+    (when (> end start)
+      (delete-region start end)
+      (gpt-run-buffer (current-buffer)))))
+
 (defvar gpt-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-c") 'gpt-follow-up)
@@ -145,6 +173,7 @@
     (define-key map (kbd "C-c C-t") 'gpt-generate-buffer-name)
     (define-key map (kbd "C-c C-q") 'gpt-close-current)
     (define-key map (kbd "C-c C-x") 'gpt-close-all)
+    (define-key map (kbd "C-c C-r") 'gpt-regenerate-response)
     map)
   "Keymap for GPT mode.")
 
