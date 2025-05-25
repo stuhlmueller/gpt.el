@@ -18,32 +18,15 @@
 
 (require 'gpt-core)
 
-(defcustom gpt-available-models
-  '(("GPT-4.1" . (openai . "gpt-4.1"))
-    ("GPT-4.5" . (openai . "gpt-4.5-preview"))
-    ("o3" . (openai . "o3"))
-    ("o4-mini" . (openai . "o4-mini"))
-    ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
-    ("Claude 4 Sonnet" . (anthropic . "claude-sonnet-4-20250514"))
-    ("Claude 4 Opus" . (anthropic . "claude-opus-4-20250514"))
-    ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-03-25")))
-  "Available models for GPT commands.
-Each entry is a cons cell where the car is the display name and
-the cdr is a cons cell of (API-TYPE . MODEL-ID)."
-  :type '(alist :key-type string
-                :value-type (cons (choice (const openai)
-                                          (const anthropic)
-                                          (const google))
-                                  string))
+(defface gpt-input-face
+  '((t (:inherit comint-highlight-prompt)))
+  "Face for the input of the GPT commands."
   :group 'gpt)
 
-(defface gpt-input-face
-  '((t :inherit comint-highlight-prompt))
-  "Face for the input of the GPT commands.")
-
 (defface gpt-output-face
-  '((t :inherit default))
-  "Face for the output of the GPT commands.")
+  '((t (:inherit default)))
+  "Face for the output of the GPT commands."
+  :group 'gpt)
 
 (defvar gpt-font-lock-keywords
   '(("^\\(User:\\|Human:\\s-*\\)\\(.*\\)$"
@@ -62,7 +45,7 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
            (memq 'gpt-prefix buffer-invisibility-spec))
       (remove-from-invisibility-spec 'gpt-prefix)
     (add-to-invisibility-spec 'gpt-prefix))
-  (font-lock-fontify-buffer))
+  (font-lock-flush))
 
 (defun gpt-copy-code-block ()
   "Copy the content of the code block at point to the clipboard."
@@ -121,7 +104,10 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
     (with-temp-buffer
       (insert prompt)
       (let ((prompt-file (gpt-create-prompt-file (current-buffer)))
-            (api-key (if (eq gpt-api-type 'openai) gpt-openai-key gpt-anthropic-key))
+            (api-key (cond ((eq gpt-api-type 'openai) gpt-openai-key)
+                           ((eq gpt-api-type 'anthropic) gpt-anthropic-key)
+                           ((eq gpt-api-type 'google) gpt-google-key)
+                           (t "NOT SET")))
             (api-type-str (symbol-name gpt-api-type)))
         (erase-buffer)
         (gpt-message "Asking GPT to generate buffer name...")
@@ -188,7 +174,7 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
      ;; but need to use a backquoted list and eval it
      `(define-derived-mode gpt-mode ,parent-mode "GPT"
         "A mode for displaying the output of GPT commands."
-        (message "GPT mode intialized with parent: %s" ',parent-mode)
+        (message "GPT mode initialized with parent: %s" ',parent-mode)
         (setq-local word-wrap t)
         (setq-local font-lock-extra-managed-props '(invisible))
         (if (eq ',parent-mode 'markdown-mode)
@@ -200,7 +186,7 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
           (progn
             (setq-local font-lock-defaults '(gpt-font-lock-keywords))
             (font-lock-mode 1)
-            (font-lock-fontify-buffer))
+            (font-lock-ensure))
           )
         (add-to-invisibility-spec 'gpt-prefix)))))
 

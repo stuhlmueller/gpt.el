@@ -20,38 +20,90 @@
 
 (savehist-mode 1)
 
+(defgroup gpt nil
+  "Interface to instruction-following language models."
+  :group 'external
+  :prefix "gpt-")
+
+(defcustom gpt-api-type 'anthropic
+  "The type of API to use. Either \\='openai, \\='anthropic, or \\='google."
+  :type '(choice (const :tag "OpenAI" openai)
+                 (const :tag "Anthropic" anthropic)
+                 (const :tag "Google" google))
+  :group 'gpt)
+
+(defcustom gpt-model "claude-opus-4-0"
+  "The model to use (e.g., \\='gpt-4.1\\=', \\='claude-sonnet-4-0\\=')."
+  :type 'string
+  :group 'gpt)
+
+(defcustom gpt-max-tokens "2000"
+  "The max_tokens value used with the chosen model."
+  :type 'string
+  :group 'gpt)
+
+(defcustom gpt-temperature "0"
+  "The temperature value used with the chosen model."
+  :type 'string
+  :group 'gpt)
+
+(defcustom gpt-available-models
+  '(("GPT-4.1" . (openai . "gpt-4.1"))
+    ("GPT-4.5" . (openai . "gpt-4.5-preview"))
+    ("o3" . (openai . "o3"))
+    ("o4-mini" . (openai . "o4-mini"))
+    ("Claude 4 Sonnet" . (anthropic . "claude-sonnet-4-0"))
+    ("Claude 4 Opus" . (anthropic . "claude-opus-4-0"))
+    ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-03-25")))
+  "Available models for GPT commands.
+Each entry is a cons cell where the car is the display name and
+the cdr is a cons cell of (API-TYPE . MODEL-ID)."
+  :type '(alist :key-type string
+                :value-type (cons (choice (const openai)
+                                          (const anthropic)
+                                          (const google))
+                                  string))
+  :group 'gpt)
+
+(defcustom gpt-openai-key "NOT SET"
+  "The OpenAI API key to use."
+  :type 'string
+  :group 'gpt)
+
+(defcustom gpt-anthropic-key "NOT SET"
+  "The Anthropic API key to use."
+  :type 'string
+  :group 'gpt)
+
+(defcustom gpt-google-key "NOT SET"
+  "The Google Gemini API key to use."
+  :type 'string
+  :group 'gpt)
+
+(defcustom gpt-python-path 
+  (let* ((script-dir (when (or load-file-name buffer-file-name)
+                       (file-name-directory (or load-file-name buffer-file-name))))
+         (venv-python (when script-dir
+                        (expand-file-name ".venv/bin/python" script-dir))))
+    (if (and venv-python (file-exists-p venv-python))
+        venv-python
+      (or (executable-find "python3")
+          (executable-find "python")
+          "python3")))
+  "The path to your python executable."
+  :type 'string
+  :group 'gpt)
+
+(defcustom gpt-use-named-buffers t
+  "If non-nil, use named buffers for GPT output. Otherwise, use temporary buffers."
+  :type 'boolean
+  :group 'gpt)
+
 (defvar gpt-command-history nil
   "A list of GPT commands that have been entered by the user.")
 
 (defvar gpt-script-path (expand-file-name "gpt.py" (file-name-directory (or load-file-name buffer-file-name)))
   "The path to the Python script used by gpt.el.")
-
-(defvar gpt-api-type 'openai
-  "The type of API to use. Either 'openai, 'anthropic, or 'google.")
-
-(defvar gpt-model "claude-3-7-sonnet-latest"
-  "The model to use (e.g., 'gpt-4.1', 'claude-3-5-sonnet-latest').")
-
-(defvar gpt-max-tokens "2000"
-  "The max_tokens value used with the chosen model.")
-
-(defvar gpt-temperature "0"
-  "The temperature value used with the chosen model.")
-
-(defvar gpt-openai-key "NOT SET"
-  "The OpenAI API key to use.")
-
-(defvar gpt-anthropic-key "NOT SET"
-  "The Anthropic API key to use.")
-
-(defvar gpt-google-key "NOT SET"
-  "The Google Gemini API key to use.")
-
-(defvar gpt-python-path "python"
-  "The path to your python executable.")
-
-(defvar gpt-use-named-buffers t
-  "If non-nil, use named buffers for GPT output. Otherwise, use temporary buffers.")
 
 (add-to-list 'savehist-additional-variables 'gpt-command-history)
 

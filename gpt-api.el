@@ -40,17 +40,32 @@
             (format "GPT_MAX_TOKENS=%s" gpt-max-tokens)
             (format "GPT_TEMPERATURE=%s" gpt-temperature)
             (format "OPENAI_API_KEY=%s" gpt-openai-key)
-            (format "ANTHROPIC_API_KEY=%s" gpt-anthropic-key))
+            (format "ANTHROPIC_API_KEY=%s" gpt-anthropic-key)
+            (format "GOOGLE_API_KEY=%s" gpt-google-key))
            process-environment)))
-    (make-process
-     :name "gpt"
-     :buffer buffer
-     :command (list gpt-python-path gpt-script-path 
-                    api-key gpt-model gpt-max-tokens gpt-temperature 
-                    (symbol-name gpt-api-type) prompt-file)
-     :coding 'utf-8-unix
-     :connection-type 'pipe
-     :process-environment process-environment)))
+    ;; Validate API key
+    (when (string= api-key "NOT SET")
+      (user-error "API key for %s is not set. Please configure %s"
+                  (symbol-name gpt-api-type)
+                  (cond ((eq gpt-api-type 'openai) "gpt-openai-key")
+                        ((eq gpt-api-type 'anthropic) "gpt-anthropic-key")
+                        ((eq gpt-api-type 'google) "gpt-google-key"))))
+    ;; Validate script exists
+    (unless (file-exists-p gpt-script-path)
+      (user-error "GPT script not found at %s" gpt-script-path))
+    ;; Create process with error handling
+    (condition-case err
+        (make-process
+         :name "gpt"
+         :buffer buffer
+         :command (list gpt-python-path gpt-script-path 
+                        api-key gpt-model gpt-max-tokens gpt-temperature 
+                        (symbol-name gpt-api-type) prompt-file)
+         :coding 'utf-8-unix
+         :connection-type 'pipe)
+      (error
+       (gpt-message "Failed to start process: %s" (error-message-string err))
+       nil))))
 
 (defun gpt-start-timer (process)
   "Start a timer to check if PROCESS is still running."
@@ -86,16 +101,22 @@
     (buffer-string)))
 
 (defun gpt-run-buffer (buffer)
-  "Run GPT command with BUFFER text as input and append output stream to output-buffer."
+  "Run GPT command with BUFFER text as input.
+Append output stream to output-buffer."
   (with-current-buffer buffer
     (goto-char (point-max))
-    (font-lock-fontify-buffer)
+    (font-lock-ensure)
     (let* ((prompt-file (gpt-create-prompt-file buffer))
-           (process (gpt-start-process prompt-file buffer))
-           (timer (gpt-start-timer process)))
-      (gpt-set-process-sentinel process timer prompt-file)
-      (gpt-message "Running command...")
-      (font-lock-fontify-buffer))))
+           (process (gpt-start-process prompt-file buffer)))
+      (if process
+          (let ((timer (gpt-start-timer process)))
+            (gpt-set-process-sentinel process timer prompt-file)
+            (gpt-message "Running command...")
+            (font-lock-ensure))
+        ;; Process creation failed
+        (when (file-exists-p prompt-file)
+          (delete-file prompt-file))
+        (gpt-message "Failed to start GPT process")))))
 
 (provide 'gpt-api)
 ;;; gpt-api.el ends here 

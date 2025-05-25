@@ -4,3 +4,4 @@ CLAUDE.md
 repomix*
 .venv*
 .mypy*
+*.elc

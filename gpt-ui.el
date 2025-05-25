@@ -49,7 +49,8 @@ USE-SELECTION determines whether selection will be included."
       (string-trim cmd))))
 
 (defun gpt-get-buffer-content (buffer &optional include-metadata)
-  "Get content from BUFFER, optionally including metadata if INCLUDE-METADATA is non-nil."
+  "Get content from BUFFER.
+Optionally include metadata if INCLUDE-METADATA is non-nil."
   (with-current-buffer buffer
     (let ((content (buffer-substring-no-properties (point-min) (point-max))))
       (if include-metadata
@@ -74,12 +75,13 @@ If INCLUDE-METADATA is non-nil, prepend a header with buffer name and file path.
         (concat before "<cursor/>" after)))))
 
 (defun gpt-get-context (context-mode)
-  "Return text context based on CONTEXT-MODE, always inserting <cursor/> in the current buffer.
+  "Return text context based on CONTEXT-MODE.
+Always insert <cursor/> in the current buffer.
 Possible CONTEXT-MODE values:
-- 'all-buffers: all visible buffers plus a <cursor/> in the current one
-- 'current-buffer: only the current buffer, with a <cursor/>
+- \='all-buffers: all visible buffers plus a <cursor/> in current one
+- \='current-buffer: only the current buffer, with a <cursor/>
 - nil: no buffer context
-In all cases, if there is an active region, that region is appended as \"Selected region:\"."
+If there is an active region, append as \"Selected region:\"."
   (require 'subr-x)
   (let* ((has-region (use-region-p))
          (region-text (when has-region
@@ -138,12 +140,13 @@ Otherwise, create a temporary buffer. Use the `gpt-mode' for the output buffer."
   (let ((template "User: %s\n\nAssistant: "))
     (insert (format template command))))
 
+;;;###autoload
 (defun gpt-chat (&optional context-mode)
   "Run user-provided GPT command with configurable context and print output stream.
 CONTEXT-MODE can be:
-- 'all-buffers: Use all visible buffers as context
-- 'current-buffer: Use current buffer as context
-- nil or 'none: Use no buffer context
+- \='all-buffers: Use all visible buffers as context
+- \='current-buffer: Use current buffer as context
+- nil or \='none: Use no buffer context
 In all cases, if there is an active region, it will be included."
   (interactive (list (let ((choice (completing-read "Context mode: "
                                                   '("all-buffers" "current-buffer" "none")
@@ -153,22 +156,31 @@ In all cases, if there is an active region, it will be included."
   (let* ((command (gpt-read-command context-mode t))  ; Pass t to use selection
          (output-buffer (gpt-create-output-buffer command))
          (input (gpt-get-context context-mode)))
+    ;; Validate command is not empty
+    (when (string-empty-p (string-trim command))
+      (user-error "Command cannot be empty"))
+    ;; Add command to history
+    (unless (string-empty-p command)
+      (add-to-list 'gpt-command-history command))
     (switch-to-buffer-other-window output-buffer)
     (when (not (string-empty-p input))
       (insert (format "User:\n\n%s\n\n" input)))
     (gpt-insert-command command)
     (gpt-run-buffer output-buffer)))
 
+;;;###autoload
 (defun gpt-chat-all-buffers ()
   "Run GPT command with all visible buffers as context."
   (interactive)
   (gpt-chat 'all-buffers))
 
+;;;###autoload
 (defun gpt-chat-current-buffer ()
   "Run GPT command with current buffer as context."
   (interactive)
   (gpt-chat 'current-buffer))
 
+;;;###autoload
 (defun gpt-chat-no-context ()
   "Run GPT command with no buffer context."
   (interactive)
@@ -188,9 +200,9 @@ In all cases, if there is an active region, it will be included."
 (defun gpt-chat-completion (&optional context-mode)
   "Complete text from cursor position using GPT with configurable context.
 CONTEXT-MODE can be:
-- 'all-buffers: Use all visible buffers as context
-- 'current-buffer: Use current buffer as context
-- nil or 'none: Use no buffer context"
+- \='all-buffers: Use all visible buffers as context
+- \='current-buffer: Use current buffer as context
+- nil or \='none: Use no buffer context"
   (interactive (list (let ((choice (completing-read "Context mode: "
                                                   '("all-buffers" "current-buffer" "none")
                                                   nil t)))
