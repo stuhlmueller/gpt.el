@@ -42,7 +42,24 @@
             (format "OPENAI_API_KEY=%s" gpt-openai-key)
             (format "ANTHROPIC_API_KEY=%s" gpt-anthropic-key)
             (format "GOOGLE_API_KEY=%s" gpt-google-key))
-           process-environment)))
+           process-environment))
+         ;; Build command arguments
+         (cmd-args (list gpt-python-path gpt-script-path 
+                         api-key gpt-model gpt-max-tokens gpt-temperature 
+                         (symbol-name gpt-api-type) prompt-file)))
+    ;; Add thinking mode arguments for Anthropic
+    (when (eq gpt-api-type 'anthropic)
+      (when gpt-thinking-enabled
+        (setq cmd-args (append cmd-args '("--thinking-enabled"))))
+      (when gpt-thinking-enabled
+        (setq cmd-args (append cmd-args (list "--thinking-budget" gpt-thinking-budget))))
+      (when gpt-interleaved-thinking
+        (setq cmd-args (append cmd-args '("--interleaved-thinking"))))
+      (when gpt-web-search
+        (setq cmd-args (append cmd-args '("--web-search")))))
+    ;; Add web search argument if enabled and not already added for Anthropic
+    (when (and gpt-web-search (not (eq gpt-api-type 'anthropic)))
+      (setq cmd-args (append cmd-args '("--web-search"))))
     ;; Validate API key
     (when (string= api-key "NOT SET")
       (user-error "API key for %s is not set. Please configure %s"
@@ -58,9 +75,7 @@
         (make-process
          :name "gpt"
          :buffer buffer
-         :command (list gpt-python-path gpt-script-path 
-                        api-key gpt-model gpt-max-tokens gpt-temperature 
-                        (symbol-name gpt-api-type) prompt-file)
+         :command cmd-args
          :coding 'utf-8-unix
          :connection-type 'pipe)
       (error

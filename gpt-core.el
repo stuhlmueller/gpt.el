@@ -37,7 +37,7 @@
   :type 'string
   :group 'gpt)
 
-(defcustom gpt-max-tokens "2000"
+(defcustom gpt-max-tokens "64000"
   "The max_tokens value used with the chosen model."
   :type 'string
   :group 'gpt)
@@ -52,6 +52,7 @@
     ("GPT-4.5" . (openai . "gpt-4.5-preview"))
     ("o3" . (openai . "o3"))
     ("o4-mini" . (openai . "o4-mini"))
+    ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
     ("Claude 4 Sonnet" . (anthropic . "claude-sonnet-4-0"))
     ("Claude 4 Opus" . (anthropic . "claude-opus-4-0"))
     ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-03-25")))
@@ -63,6 +64,23 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
                                           (const anthropic)
                                           (const google))
                                   string))
+  :group 'gpt)
+
+  ;; Model-specific max tokens
+(defcustom gpt-model-max-tokens
+  '(("claude-3-7-sonnet-latest" . "64000")
+    ("claude-sonnet-4-0" . "64000")
+    ("claude-opus-4-0" . "32000")
+    ("claude-3-5-sonnet-latest" . "8192")
+    ("claude-3-5-haiku-latest" . "8192")
+    ("claude-3-opus-latest" . "4096")
+    ("gpt-4.1" . "128000")
+    ("gpt-4.5-preview" . "128000")
+    ("o3" . "100000")
+    ("o4-mini" . "16000")
+    ("gemini-2.5-pro-preview-03-25" . "8192"))
+  "Maximum output tokens for each model."
+  :type '(alist :key-type string :value-type string)
   :group 'gpt)
 
 (defcustom gpt-openai-key "NOT SET"
@@ -79,6 +97,24 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
   "The Google Gemini API key to use."
   :type 'string
   :group 'gpt)
+
+(defcustom gpt-thinking-enabled t
+  "Enable extended thinking mode for Anthropic models."
+  :type 'boolean
+  :group 'gpt)
+
+(defcustom gpt-interleaved-thinking t
+  "Enable interleaved thinking with tools for Anthropic models."
+  :type 'boolean
+  :group 'gpt)
+
+(defcustom gpt-web-search t
+  "Enable web search for models that support it."
+  :type 'boolean
+  :group 'gpt)
+
+(defvar gpt-thinking-budget "21333"
+  "Token budget for extended thinking mode (automatically set to 1/3 of max tokens).")
 
 (defcustom gpt-python-path 
   (let* ((script-dir (when (or load-file-name buffer-file-name)
@@ -142,6 +178,21 @@ have the same meaning as for `completing-read'."
            (define-key map " " 'self-insert-command)
            map)))
     (completing-read prompt collection predicate require-match initial-input hist def inherit-input-method)))
+
+(defun gpt-update-model-settings ()
+  "Update max_tokens and thinking_budget based on the current model."
+  (let* ((model-max (cdr (assoc gpt-model gpt-model-max-tokens)))
+         (max-tokens (or model-max "64000"))  ; Default to 64000 if model not found
+         (max-tokens-num (string-to-number max-tokens))
+         (thinking-budget-num (/ max-tokens-num 3))  ; 1/3 of max tokens
+         (thinking-budget (number-to-string thinking-budget-num)))
+    (setq gpt-max-tokens max-tokens)
+    (setq gpt-thinking-budget thinking-budget)
+    (message "Model settings updated: max_tokens=%s, thinking_budget=%s" 
+             max-tokens thinking-budget)))
+
+;; Initialize settings on load
+(gpt-update-model-settings)
 
 (provide 'gpt-core)
 ;;; gpt-core.el ends here 

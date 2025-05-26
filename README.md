@@ -14,6 +14,8 @@ gpt.el is an Emacs package that lets you interact with instruction-following lan
 - **Interactive conversations**: Follow-up commands with conversation history
 - **Command history**: Browse, save, and clear your command history
 - **Flexible context modes**: All buffers, current buffer, or no context
+- **Extended thinking mode**: Enhanced reasoning for Anthropic models with streaming thought process
+- **Web search**: Real-time web search capability for Anthropic models
 
 ## Installation
 
@@ -102,7 +104,7 @@ Optionally, customize the model parameters:
 
 ```elisp
 (setq gpt-model "claude-3-7-sonnet-latest")  ; Default model
-(setq gpt-max-tokens "2000")
+(setq gpt-max-tokens "64000")  ; Automatically set based on model
 (setq gpt-temperature "0")
 ```
 
@@ -134,8 +136,8 @@ gpt.el supports the latest models from all providers:
 **Anthropic:**
 
 - `claude-3-7-sonnet-latest` - Claude 3.7 Sonnet (default)
-- `claude-sonnet-4-20250514` - Claude 4 Sonnet
-- `claude-opus-4-20250514` - Claude 4 Opus
+- `claude-sonnet-4-0` - Claude 4 Sonnet
+- `claude-opus-4-0` - Claude 4 Opus
 
 **Google:**
 
@@ -155,6 +157,66 @@ To switch API providers:
 ;; For Google Gemini
 (setq gpt-api-type 'google)
 ```
+
+### Extended Thinking Mode (Anthropic Only)
+
+gpt.el supports Anthropic's extended thinking mode, which gives Claude enhanced reasoning capabilities for complex tasks. This mode is **enabled by default** for Anthropic models. When active, you'll see Claude's step-by-step thought process streamed to the message area before the final response.
+
+#### Configuration
+
+```elisp
+;; Extended thinking is enabled by default for Anthropic models
+;; To disable it:
+(setq gpt-thinking-enabled nil)
+
+;; Thinking budget is automatically set to 1/3 of max_tokens
+
+;; Interleaved thinking is enabled by default
+;; To disable it:
+(setq gpt-interleaved-thinking nil)
+
+;; Enable web search (disabled by default)
+(setq gpt-web-search t)
+
+;; Note: When thinking is enabled, temperature is automatically set to 1
+```
+
+#### Interactive Commands
+
+When in a GPT buffer, you can use these key bindings:
+
+- `C-c T t` - Toggle extended thinking mode
+- `C-c T i` - Toggle interleaved thinking mode
+- `C-c T w` - Toggle web search
+- `C-c T s` - Show current thinking mode status
+
+Or use the commands directly:
+
+- `M-x gpt-toggle-thinking` - Toggle extended thinking on/off
+- `M-x gpt-toggle-interleaved-thinking` - Toggle interleaved thinking
+- `M-x gpt-toggle-web-search` - Toggle web search capability
+- `M-x gpt-thinking-status` - Display current settings
+
+#### What You'll See
+
+When thinking mode is enabled:
+
+1. **Thinking Process**: Claude's reasoning steps appear in the message area (stderr), prefixed with indentation
+2. **Web Search**: When web search is enabled, you'll see `[Searching the web...]` messages
+3. **Final Response**: The actual response appears in the GPT buffer as usual
+
+This feature is particularly useful for:
+
+- Complex mathematical problems
+- Multi-step reasoning tasks
+- Code analysis and debugging
+- Research questions requiring web search
+
+**Note**: Extended thinking mode is only available for Anthropic models (Claude 3.7 Sonnet, Claude 4 Sonnet, and Claude 4 Opus). When thinking mode is enabled:
+
+- Temperature is automatically set to 1 as required by the API
+- `max_tokens` is automatically set to the model's maximum (64k for Sonnet models, 32k for Opus)
+- `thinking_budget` is automatically set to 1/3 of `max_tokens`
 
 ## Usage
 
@@ -208,11 +270,11 @@ python3 gpt.py <api_key> <model> <max_tokens> <temperature> <api_type> <prompt_f
 
 ### Backend Features
 
-- ✅ Specific exception handling for each API provider
-- ✅ Conversation format parsing (`User:` / `Assistant:` blocks)
-- ✅ Automatic logging to JSONL format
-- ✅ Robust error handling and validation
-- ✅ Streaming output support
+- Specific exception handling for each API provider
+- Conversation format parsing (`User:` / `Assistant:` blocks)
+- Automatic logging to JSONL format
+- Robust error handling and validation
+- Streaming output support
 
 ## Troubleshooting
 

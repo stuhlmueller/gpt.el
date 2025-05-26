@@ -227,5 +227,39 @@ CONTEXT-MODE can be:
     ;; Run GPT
     (gpt-run-buffer output-buffer)))
 
+;;;###autoload
+(defun gpt-toggle-thinking ()
+  "Toggle extended thinking mode for Anthropic models (enabled by default)."
+  (interactive)
+  (setq gpt-thinking-enabled (not gpt-thinking-enabled))
+  (message "Extended thinking mode %s" 
+           (if gpt-thinking-enabled "enabled" "disabled")))
+
+;;;###autoload
+(defun gpt-toggle-interleaved-thinking ()
+  "Toggle interleaved thinking mode for Anthropic models (enabled by default)."
+  (interactive)
+  (setq gpt-interleaved-thinking (not gpt-interleaved-thinking))
+  (message "Interleaved thinking mode %s" 
+           (if gpt-interleaved-thinking "enabled" "disabled")))
+
+;;;###autoload
+(defun gpt-toggle-web-search ()
+  "Toggle web search for Anthropic models."
+  (interactive)
+  (setq gpt-web-search (not gpt-web-search))
+  (message "Web search %s" 
+           (if gpt-web-search "enabled" "disabled")))
+
+;;;###autoload
+(defun gpt-thinking-status ()
+  "Display current thinking mode settings."
+  (interactive)
+  (message "Thinking: %s | Interleaved: %s | Web Search: %s | Budget: %s tokens"
+           (if gpt-thinking-enabled "ON" "OFF")
+           (if gpt-interleaved-thinking "ON" "OFF")
+           (if gpt-web-search "ON" "OFF")
+           gpt-thinking-budget))
+
 (provide 'gpt-ui)
 ;;; gpt-ui.el ends here 

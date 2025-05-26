@@ -5,3 +5,4 @@ repomix*
 .venv*
 .mypy*
 *.elc
+*.cpython*

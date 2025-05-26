@@ -28,6 +28,27 @@
   "Face for the output of the GPT commands."
   :group 'gpt)
 
+(defface gpt-thinking-delimiter-face
+  '((((class color) (min-colors 88) (background light)) :foreground "darkgreen" :weight bold)
+    (((class color) (min-colors 88) (background dark)) :foreground "springgreen" :weight bold)
+    (t :inherit font-lock-keyword-face :weight bold))
+  "Face for [Thinking...] and [Thinking done.] delimiters."
+  :group 'gpt)
+
+(defface gpt-thinking-content-face
+  '((((class color) (min-colors 88) (background light)) :foreground "gray50")
+    (((class color) (min-colors 88) (background dark)) :foreground "gray70")
+    (t :inherit font-lock-comment-face))
+  "Face for content within a thinking block."
+  :group 'gpt)
+
+(defface gpt-tool-call-face
+  '((((class color) (min-colors 88) (background light)) :foreground "royalblue" :weight bold)
+    (((class color) (min-colors 88) (background dark)) :foreground "skyblue" :weight bold)
+    (t :inherit font-lock-function-name-face :weight bold))
+  "Face for tool call blocks like [Searching for: ...] and [Got web search results]."
+  :group 'gpt)
+
 (defvar gpt-font-lock-keywords
   '(("^\\(User:\\|Human:\\s-*\\)\\(.*\\)$"
      (1 '(face nil invisible gpt-prefix))
@@ -37,6 +58,61 @@
      (2 'gpt-output-face))
     ("```\\([\0-\377[:nonascii:]]*?\\)```"  ; match code snippets enclosed in backticks
      (1 'font-lock-constant-face))))
+
+(defvar gpt--old-font-lock-keywords gpt-font-lock-keywords
+  "Original gpt-font-lock-keywords for User/Assistant and code blocks.")
+
+(defun gpt--font-lock-scan-thinking-content (limit)
+  "Scan for gpt thinking content and set match data.
+This function is intended for use in `font-lock-keywords'.
+It searches for a block of text that starts after a \"^[Thinking...]\"
+and ends before a \"^[Thinking done.]\", another \"^[Thinking...]\",
+or the `limit`.
+
+Point is moved to the end of the matched content region if a match is found.
+Returns t if a match is found and sets match-data, nil otherwise."
+  (let (found-match)
+    ;; Search for the start of a thinking block from the current point.
+    (when (re-search-forward "^\\[Thinking\\.\\.\\.\\]" limit t)
+      (let ((block-content-start (match-end 0)) ; Content starts after the delimiter
+            (block-content-end limit))          ; Default end is the search limit
+
+        ;; From the start of the content, search for the end delimiter
+        ;; or the start of a new thinking block.
+        (save-excursion
+          (goto-char block-content-start)
+          (if (re-search-forward "^\\(\\[Thinking done\\.\\]\\|\\[Thinking\\.\\.\\.\\]\\)" limit t)
+              ;; If found, content ends before this new delimiter
+              (setq block-content-end (match-beginning 0))))
+
+        ;; Check if there is actual content to highlight
+        (when (> block-content-end block-content-start)
+          (set-match-data (list block-content-start block-content-end))
+          ;; Move point to the end of the matched content for font-lock
+          (goto-char block-content-end)
+          (setq found-match t))))
+    found-match))
+
+(defvar gpt-highlighting-keywords
+  (list
+   ;; Rule for the content within thinking blocks.
+   ;; This is processed first.
+   '(gpt--font-lock-scan-thinking-content . 'gpt-thinking-content-face)
+
+   ;; Rules for delimiters. These have 'override' set to true (the `t` at the end),
+   ;; so they will apply their face even if the line was already faced by the content rule.
+   '("^\\[Thinking\\.\\.\\.\\]"       (0 'gpt-thinking-delimiter-face t))
+   '("^\\[Thinking done\\.\\]"     (0 'gpt-thinking-delimiter-face t))
+
+   ;; Rules for tool call lines. Also with override.
+   '("^\\[Searching for: [^\n]*\\]" (0 'gpt-tool-call-face t))
+   '("^\\[Got web search results\\]" (0 'gpt-tool-call-face t)))
+  "Font-lock keywords for gpt-style output buffers.
+The order is important: content is matched by the function,
+then specific delimiter lines override the content face.")
+
+;; Combine new keywords with old ones
+(setq gpt-font-lock-keywords (append gpt-highlighting-keywords gpt--old-font-lock-keywords))
 
 (defun gpt-toggle-prefix ()
   "Toggle the visibility of the GPT prefixes."
@@ -66,7 +142,10 @@
   "Switch between OpenAI, Anthropic, and Google models."
   (interactive)
   (let* ((current-model-name (car (rassoc (cons gpt-api-type gpt-model) gpt-available-models)))
-         (choice (completing-read "Choose model: " 
+         (prompt (format "Choose model (current: %s): " 
+                         (or current-model-name 
+                             (format "%s/%s" gpt-api-type gpt-model))))
+         (choice (completing-read prompt
                                   (mapcar #'car gpt-available-models) 
                                   nil t nil nil current-model-name))
          (model-info (cdr (assoc choice gpt-available-models))))
@@ -74,7 +153,10 @@
         (progn
           (setq gpt-api-type (car model-info)
                 gpt-model (cdr model-info))
-          (message "Switched to %s model: %s" (symbol-name gpt-api-type) (cdr model-info)))
+          (gpt-update-model-settings)  ; Update max_tokens and thinking_budget
+          (message "Switched to %s model: %s (max_tokens=%s, thinking_budget=%s)" 
+                   (symbol-name gpt-api-type) (cdr model-info)
+                   gpt-max-tokens gpt-thinking-budget))
       (message "Model selection cancelled."))))
 
 (defun gpt-close-current ()
@@ -160,6 +242,11 @@
     (define-key map (kbd "C-c C-q") 'gpt-close-current)
     (define-key map (kbd "C-c C-x") 'gpt-close-all)
     (define-key map (kbd "C-c C-r") 'gpt-regenerate-response)
+    ;; Thinking mode commands
+    (define-key map (kbd "C-c T t") 'gpt-toggle-thinking)
+    (define-key map (kbd "C-c T i") 'gpt-toggle-interleaved-thinking)
+    (define-key map (kbd "C-c T w") 'gpt-toggle-web-search)
+    (define-key map (kbd "C-c T s") 'gpt-thinking-status)
     map)
   "Keymap for GPT mode.")
 
@@ -176,6 +263,7 @@
         "A mode for displaying the output of GPT commands."
         (message "GPT mode initialized with parent: %s" ',parent-mode)
         (setq-local word-wrap t)
+        (setq-local font-lock-multiline t) ; Ensure `.` can match newline for our regexps
         (setq-local font-lock-extra-managed-props '(invisible))
         (if (eq ',parent-mode 'markdown-mode)
             (progn
@@ -184,7 +272,7 @@
               (setq font-lock-defaults
                     (list (append markdown-mode-font-lock-keywords gpt-font-lock-keywords))))
           (progn
-            (setq-local font-lock-defaults '(gpt-font-lock-keywords))
+            (setq-local font-lock-defaults '(gpt-font-lock-keywords nil t)) ; Added nil t for no-keyword-छेदन and multiline
             (font-lock-mode 1)
             (font-lock-ensure))
           )
