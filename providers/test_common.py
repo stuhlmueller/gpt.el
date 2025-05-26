@@ -35,7 +35,7 @@ class TestExceptions:
         """Test MissingDependencyError exception."""
         with pytest.raises(MissingDependencyError, match="Package not found"):
             raise MissingDependencyError("Package not found")
-        
+
         # Check it's a subclass of APIError
         assert issubclass(MissingDependencyError, APIError)
 
@@ -43,7 +43,7 @@ class TestExceptions:
         """Test InvalidAPIKeyError exception."""
         with pytest.raises(InvalidAPIKeyError, match="Invalid key"):
             raise InvalidAPIKeyError("Invalid key")
-        
+
         # Check it's a subclass of APIError
         assert issubclass(InvalidAPIKeyError, APIError)
 
@@ -55,7 +55,7 @@ class TestParseMessages:
         """Test parsing simple user/assistant messages."""
         prompt = "user: Hello\nassistant: Hi there!"
         messages = parse_messages(prompt)
-        
+
         assert len(messages) == 2
         assert messages[0].role == "user"
         assert messages[0].content == "Hello"
@@ -69,7 +69,7 @@ How are you today?
 assistant: I'm doing well!
 Thanks for asking."""
         messages = parse_messages(prompt)
-        
+
         assert len(messages) == 2
         assert messages[0].role == "user"
         assert messages[0].content == "Hello\nHow are you today?"
@@ -80,7 +80,7 @@ Thanks for asking."""
         """Test parsing with custom supported roles."""
         prompt = "human: Hello\nmodel: Hi!"
         messages = parse_messages(prompt, {"human", "model"})
-        
+
         assert len(messages) == 2
         assert messages[0].role == "human"
         assert messages[0].content == "Hello"
@@ -91,7 +91,7 @@ Thanks for asking."""
         """Test that role parsing is case-insensitive."""
         prompt = "USER: Hello\nASSISTANT: Hi!"
         messages = parse_messages(prompt)
-        
+
         assert len(messages) == 2
         assert messages[0].role == "user"
         assert messages[0].content == "Hello"
@@ -144,4 +144,4 @@ class TestValidateApiKey:
     def test_validate_whitespace_key(self):
         """Test validation with whitespace-only key."""
         with pytest.raises(InvalidAPIKeyError, match="TestAPI API key not set"):
-            validate_api_key("   ", "TestAPI") 
+            validate_api_key("   ", "TestAPI")

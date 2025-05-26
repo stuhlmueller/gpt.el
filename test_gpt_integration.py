@@ -35,7 +35,7 @@ def test_anthropic_basic_integration(monkeypatch):
         pytest.skip("Anthropic API key not set or invalid, skipping integration test.")
 
     model = "claude-3-haiku-20240307"  # Using a fast, cheap model for tests
-    
+
     mock_stdout = io.StringIO()
     monkeypatch.setattr(sys, 'stdout', mock_stdout)
 
@@ -51,11 +51,11 @@ def test_anthropic_basic_integration(monkeypatch):
         print_and_collect(stream, api_type="anthropic")
 
         stdout_val = mock_stdout.getvalue()
-        
+
         # Basic check that we got a response
         assert len(stdout_val) > 0
         assert any(greeting in stdout_val.lower() for greeting in ["hello", "hi", "hey", "greetings"])
-        
+
     except Exception as e:
         pytest.fail(f"Anthropic integration test failed: {e}")
 
@@ -86,7 +86,7 @@ def test_anthropic_thinking_integration(monkeypatch):
             interleaved_thinking=True,
         )
         print_and_collect(stream, api_type="anthropic")
-        
+
         stdout_val = mock_stdout.getvalue()
 
         # Check we got the correct answer
@@ -107,7 +107,7 @@ def test_openai_basic_integration(monkeypatch):
         pytest.skip("OpenAI API key not set or invalid, skipping integration test.")
 
     model = "gpt-4o-mini"  # Using a cheaper model for tests
-    
+
     mock_stdout = io.StringIO()
     monkeypatch.setattr(sys, 'stdout', mock_stdout)
 
@@ -120,13 +120,13 @@ def test_openai_basic_integration(monkeypatch):
             temperature=TEMPERATURE_NO_THINKING_FLOAT,
         )
         print_and_collect(stream, api_type="openai")
-        
+
         stdout_val = mock_stdout.getvalue()
-        
+
         # Basic check that we got a response
         assert len(stdout_val) > 0
         assert any(greeting in stdout_val.lower() for greeting in ["hello", "hi", "hey", "greetings"])
-        
+
     except Exception as e:
         pytest.fail(f"OpenAI integration test failed: {e}")
 
@@ -140,7 +140,7 @@ def test_google_basic_integration(monkeypatch):
         pytest.skip("Google API key not set or invalid, skipping integration test.")
 
     model = "gemini-1.5-flash"  # Using a fast model for tests
-    
+
     mock_stdout = io.StringIO()
     monkeypatch.setattr(sys, 'stdout', mock_stdout)
 
@@ -153,13 +153,13 @@ def test_google_basic_integration(monkeypatch):
             temperature=TEMPERATURE_NO_THINKING_FLOAT,
         )
         print_and_collect(stream, api_type="google")
-        
+
         stdout_val = mock_stdout.getvalue()
-        
+
         # Basic check that we got a response
         assert len(stdout_val) > 0
         assert any(greeting in stdout_val.lower() for greeting in ["hello", "hi", "hey", "greetings"])
-        
+
     except Exception as e:
         pytest.fail(f"Google integration test failed: {e}")
 
@@ -191,7 +191,7 @@ def test_anthropic_thinking_difference_integration(monkeypatch):
             interleaved_thinking=enabled,
         )
         print_and_collect(stream, api_type="anthropic")
-        
+
         # Restore stdout
         monkeypatch.setattr(sys, "stdout", sys.__stdout__)
         return stdout_buf.getvalue()

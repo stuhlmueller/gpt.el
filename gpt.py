@@ -91,7 +91,7 @@ def parse_args() -> argparse.Namespace:
 def print_and_collect(stream: Union["OpenAIStream[Any]", Iterator[Any]], api_type: APIType) -> str:
     """Print streaming output and collect the complete response."""
     out = ""
-    
+
     # Get the appropriate handler based on API type
     if api_type == "openai":
         string_stream = handle_openai_stream(cast("OpenAIStream[Any]", stream))
@@ -101,16 +101,16 @@ def print_and_collect(stream: Union["OpenAIStream[Any]", Iterator[Any]], api_typ
         string_stream = handle_google_stream(cast(Iterator["GenerateContentResponse"], stream))
     else:
         raise ValueError(f"Unsupported api_type {api_type}")
-    
+
     # Print and collect the strings from the generator
     for text in string_stream:
         print(text, end="", flush=True)
         out += text
-    
+
     # Print final newline if output doesn't end with one
     if out and not out.endswith('\n'):
         print()
-    
+
     return out
 
 
@@ -163,7 +163,7 @@ def main() -> None:
             )
 
         completion = print_and_collect(stream, args.api_type)
-        
+
         write_jsonl(prompt, completion)
 
     except KeyboardInterrupt:

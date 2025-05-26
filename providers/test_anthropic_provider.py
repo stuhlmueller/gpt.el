@@ -24,7 +24,7 @@ class TestAnthropicProvider:
         """Test that invalid API key raises appropriate error."""
         with pytest.raises(InvalidAPIKeyError, match="Anthropic API key not set"):
             stream_anthropic("test prompt", "NOT SET", "claude-3", 100, 0.5)
-        
+
         with pytest.raises(InvalidAPIKeyError, match="Anthropic API key not set"):
             stream_anthropic("test prompt", "", "claude-3", 100, 0.5)
 
@@ -42,7 +42,7 @@ class TestAnthropicProvider:
         assert result == mock_stream
         mock_client.messages.create.assert_called_once()
         call_args = mock_client.messages.create.call_args[1]
-        
+
         # Check messages were formatted correctly
         messages = call_args['messages']
         assert len(messages) == 3
@@ -73,7 +73,7 @@ class TestAnthropicProvider:
 
         assert result == mock_stream
         call_args = mock_client.messages.create.call_args[1]
-        
+
         # Check thinking parameters
         assert call_args['temperature'] == 1  # Must be 1 for thinking
         assert 'thinking' in call_args
@@ -158,4 +158,4 @@ class TestAnthropicProvider:
         # So we just check that the search was initiated and results were shown
         assert "[Searching for:" in output or "[Using tool:" in output
         assert "[Got web search results]" in output
-        assert "Here are the results..." in output 
+        assert "Here are the results..." in output

@@ -40,7 +40,7 @@ def stream_anthropic(
     web_search: bool = False,
 ) -> Iterator["AnthropicMessageStreamEvent"]:
     """Generate completions using Anthropic's API with optional extended thinking.
-    
+
     Args:
         prompt: The input prompt containing user/assistant messages
         api_key: Anthropic API key
@@ -51,17 +51,17 @@ def stream_anthropic(
         thinking_budget: Token budget for thinking (must be less than max_tokens)
         interleaved_thinking: Whether to enable interleaved thinking with tools
         web_search: Whether to enable web search tool
-        
+
     Returns:
         Iterator of Anthropic message stream events
-        
+
     Raises:
         MissingDependencyError: If anthropic package is not installed
         InvalidAPIKeyError: If API key is invalid
         ValueError: If thinking parameters are invalid
         APIError: For other API-related errors
     """
-    
+
     check_dependency(anthropic, "Anthropic Python package", "`pip install anthropic")
     validate_api_key(api_key, "Anthropic")
 
@@ -151,7 +151,7 @@ def handle_anthropic_stream(stream: Iterator["AnthropicMessageStreamEvent"]) -> 
             content_block = getattr(chunk, "content_block", None)
             if content_block:
                 current_block_type = getattr(content_block, "type", None)
-                
+
                 if current_block_type == "thinking":
                     yield "\n[Thinking...]\n"
                 elif current_block_type == "server_tool_use":
@@ -185,7 +185,7 @@ def handle_anthropic_stream(stream: Iterator["AnthropicMessageStreamEvent"]) -> 
                         partial_json = getattr(delta, "partial_json", None)
                         if partial_json:
                             current_tool_input_buffer += partial_json
-        
+
         elif chunk_type == "content_block_stop":
             if current_block_type == "thinking":
                 yield "\n[Thinking done.]\n"
@@ -205,11 +205,11 @@ def handle_anthropic_stream(stream: Iterator["AnthropicMessageStreamEvent"]) -> 
                 current_tool_input_buffer = ""
             elif current_block_type == "web_search_tool_result":
                 pass
-            
+
             current_block_type = None
 
         elif chunk_type == "message_delta":
             pass
-        
+
         elif chunk_type == "message_stop":
-            pass 
+            pass

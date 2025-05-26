@@ -24,7 +24,7 @@ class TestOpenAIProvider:
         """Test that invalid API key raises appropriate error."""
         with pytest.raises(InvalidAPIKeyError, match="OpenAI API key not set"):
             call_openai("test prompt", "NOT SET", "gpt-4", 100, 0.5)
-        
+
         with pytest.raises(InvalidAPIKeyError, match="OpenAI API key not set"):
             call_openai("test prompt", "", "gpt-4", 100, 0.5)
 
@@ -61,7 +61,7 @@ class TestOpenAIProvider:
         assert result == mock_stream
         mock_client.responses.create.assert_called_once()
         call_args = mock_client.responses.create.call_args[1]
-        
+
         # Check that messages were parsed correctly
         messages = call_args['input']
         assert len(messages) == 4  # system + 3 from prompt
@@ -72,7 +72,7 @@ class TestOpenAIProvider:
         assert messages[2]['content'] == 'Hi there!'
         assert messages[3]['role'] == 'user'
         assert messages[3]['content'] == 'How are you?'
-        
+
         # Temperature 0.0 should not be included
         assert 'temperature' not in call_args
 
@@ -148,4 +148,4 @@ class TestOpenAIProvider:
         # So we just check that the search was initiated and results were shown
         assert "[Searching for:" in output or "[Using tool:" in output or "[Finished preparing" in output
         assert "[Got web search results]" in output
-        assert "Here are the latest news..." in output 
+        assert "Here are the latest news..." in output

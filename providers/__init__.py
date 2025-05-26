@@ -1,1 +1,1 @@
-"""Provider implementations for gpt.py.""" 
+"""Provider implementations for gpt.py."""

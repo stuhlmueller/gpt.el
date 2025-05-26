@@ -24,7 +24,7 @@ class TestGoogleProvider:
         """Test that invalid API key raises appropriate error."""
         with pytest.raises(InvalidAPIKeyError, match="Google API key not set"):
             stream_google("test prompt", "NOT SET", "gemini-pro", 100, 0.5)
-        
+
         with pytest.raises(InvalidAPIKeyError, match="Google API key not set"):
             stream_google("test prompt", "", "gemini-pro", 100, 0.5)
 
@@ -36,7 +36,7 @@ class TestGoogleProvider:
         mock_genai.Client.return_value = mock_client
         mock_stream = Mock()
         mock_client.models.generate_content_stream.return_value = mock_stream
-        
+
         # Mock the types
         mock_genai_types.UserContent = Mock
         mock_genai_types.Part.from_text = Mock(return_value=Mock())
@@ -47,7 +47,7 @@ class TestGoogleProvider:
         assert result == mock_stream
         mock_client.models.generate_content_stream.assert_called_once()
         call_args = mock_client.models.generate_content_stream.call_args[1]
-        
+
         assert call_args['model'] == 'gemini-pro'
         assert len(call_args['contents']) == 1
 
@@ -59,7 +59,7 @@ class TestGoogleProvider:
         mock_genai.Client.return_value = mock_client
         mock_stream = Mock()
         mock_client.models.generate_content_stream.return_value = mock_stream
-        
+
         # Mock the types
         mock_genai_types.UserContent = Mock
         mock_genai_types.ModelContent = Mock
@@ -71,7 +71,7 @@ class TestGoogleProvider:
 
         assert result == mock_stream
         call_args = mock_client.models.generate_content_stream.call_args[1]
-        
+
         # Check that messages were parsed correctly
         contents = call_args['contents']
         assert len(contents) == 3
@@ -84,7 +84,7 @@ class TestGoogleProvider:
         mock_genai.Client.return_value = mock_client
         mock_stream = Mock()
         mock_client.models.generate_content_stream.return_value = mock_stream
-        
+
         # Mock the types
         mock_genai_types.UserContent = Mock
         mock_genai_types.Part.from_text = Mock(return_value=Mock())
@@ -106,17 +106,17 @@ class TestGoogleProvider:
         """Test that API errors are properly wrapped."""
         mock_client = Mock()
         mock_genai.Client.return_value = mock_client
-        
+
         # Test authentication error
         mock_client.models.generate_content_stream.side_effect = ValueError("Invalid api_key")
         with pytest.raises(InvalidAPIKeyError, match="Google API authentication failed"):
             stream_google("Hello", "test_key", "gemini-pro", 100, 0.5)
-        
+
         # Test connection error
         mock_client.models.generate_content_stream.side_effect = ConnectionError("Network error")
         with pytest.raises(APIError, match="Google API connection error"):
             stream_google("Hello", "test_key", "gemini-pro", 100, 0.5)
-        
+
         # Test timeout error
         mock_client.models.generate_content_stream.side_effect = TimeoutError("Request timeout")
         with pytest.raises(APIError, match="Google API timeout"):
@@ -135,4 +135,4 @@ class TestGoogleProvider:
         result_gen = handle_google_stream(iter(chunks))
         result = ''.join(result_gen)
 
-        assert result == "Hello from Gemini!" 
+        assert result == "Hello from Gemini!"

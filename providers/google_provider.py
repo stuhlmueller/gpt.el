@@ -36,7 +36,7 @@ def stream_google(
     temperature: float,
 ) -> Iterator["GenerateContentResponse"]:
     """Generate completions using Google's Gemini API."""
-    
+
     check_dependency(genai, "Google GenAI package", "`pip install google‑genai`")
     validate_api_key(api_key, "Google")
 
@@ -89,8 +89,8 @@ def stream_google(
 def handle_google_stream(stream: Iterator["GenerateContentResponse"]) -> Iterator[str]:
     """Handle Google streaming responses and yield text chunks."""
     for item in stream:
-        chunk: Any = item 
+        chunk: Any = item
         text_val = getattr(chunk, "text", None)
         if text_val is not None:
             text = str(text_val)
-            yield text 
+            yield text

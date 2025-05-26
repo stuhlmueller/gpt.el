@@ -77,4 +77,4 @@ def validate_api_key(api_key: str, api_name: str) -> None:
 # Constants
 DEFAULT_SYSTEM_MESSAGE = "You are a helpful assistant."
 DEFAULT_THINKING_BUDGET = 10000
-DEFAULT_GOOGLE_MAX_TOKENS = 32000 
+DEFAULT_GOOGLE_MAX_TOKENS = 32000
