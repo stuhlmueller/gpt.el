@@ -42,9 +42,6 @@
 (require 'gpt-ui)
 (require 'gpt-mode)
 
-;; Initialize the mode
-(gpt-dynamically-define-gpt-mode)
-
 (provide 'gpt)
 
 ;;; gpt.el ends here

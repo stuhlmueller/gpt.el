@@ -97,7 +97,7 @@ Returns t if a match is found and sets match-data, nil otherwise."
   (list
    ;; Rule for the content within thinking blocks.
    ;; This is processed first.
-   '(gpt--font-lock-scan-thinking-content . 'gpt-thinking-content-face)
+   '(gpt--font-lock-scan-thinking-content . (0 'gpt-thinking-content-face))
 
    ;; Rules for delimiters. These have 'override' set to true (the `t` at the end),
    ;; so they will apply their face even if the line was already faced by the content rule.
@@ -250,33 +250,55 @@ then specific delimiter lines override the content face.")
     map)
   "Keymap for GPT mode.")
 
-(defun gpt-dynamically-define-gpt-mode ()
-  "Define `gpt-mode` based on whether markdown-mode is available or not."
-  (let ((parent-mode (if (fboundp 'markdown-mode)
-                         'markdown-mode
-                       'text-mode)))
-    (eval
-     ;; the `define-derived-mode` macro expects a literal as its first argument
-     ;; hence, we can not simply use the `parent-mode` variable
-     ;; but need to use a backquoted list and eval it
-     `(define-derived-mode gpt-mode ,parent-mode "GPT"
-        "A mode for displaying the output of GPT commands."
-        (message "GPT mode initialized with parent: %s" ',parent-mode)
-        (setq-local word-wrap t)
-        (setq-local font-lock-multiline t) ; Ensure `.` can match newline for our regexps
-        (setq-local font-lock-extra-managed-props '(invisible))
-        (if (eq ',parent-mode 'markdown-mode)
-            (progn
-              (setq markdown-fontify-code-blocks-natively t)
-              ;; Combine markdown-mode's keywords with custom keywords
-              (setq font-lock-defaults
-                    (list (append markdown-mode-font-lock-keywords gpt-font-lock-keywords))))
-          (progn
-            (setq-local font-lock-defaults '(gpt-font-lock-keywords nil t)) ; Added nil t for no-keyword-छेदन and multiline
-            (font-lock-mode 1)
-            (font-lock-ensure))
-          )
-        (add-to-invisibility-spec 'gpt-prefix)))))
+(define-derived-mode gpt-mode text-mode "GPT"
+  "A mode for displaying the output of GPT commands.
+This mode provides syntax highlighting for GPT conversations and
+integrates with markdown-mode if available."
+  (setq-local word-wrap t)
+  (setq-local font-lock-multiline t)
+  (setq-local font-lock-extra-managed-props '(invisible))
+  
+  ;; Check if we should enhance with markdown features
+  (if (and (fboundp 'markdown-mode)
+           (bound-and-true-p gpt-use-markdown-mode))
+      (gpt--setup-markdown-features)
+    (gpt--setup-basic-features))
+  
+  (add-to-invisibility-spec 'gpt-prefix)
+  ;; Use the keymap we defined earlier
+  (use-local-map gpt-mode-map))
+
+(defun gpt--setup-markdown-features ()
+  "Set up markdown-specific features for gpt-mode."
+  ;; First apply markdown-mode settings
+  (let ((markdown-inhibit-mode-hooks t))  ; Prevent recursion
+    (markdown-mode))
+  ;; Then apply our customizations
+  (setq major-mode 'gpt-mode)
+  (setq mode-name "GPT")
+  (setq markdown-fontify-code-blocks-natively t)
+  ;; Combine markdown and GPT font-lock keywords
+  (let ((markdown-keywords (if (and (boundp 'markdown-mode-font-lock-keywords)
+                                    markdown-mode-font-lock-keywords)
+                               markdown-mode-font-lock-keywords
+                             ;; Fallback to current font-lock-defaults if available
+                             (and font-lock-defaults
+                                  (listp font-lock-defaults)
+                                  (car font-lock-defaults)))))
+    (setq font-lock-defaults
+          (list (append (if (listp markdown-keywords)
+                            markdown-keywords
+                          nil)
+                        gpt-font-lock-keywords)
+                nil t nil nil)))
+  ;; Re-apply our keymap
+  (use-local-map gpt-mode-map))
+
+(defun gpt--setup-basic-features ()
+  "Set up basic text-mode features for gpt-mode."
+  (setq-local font-lock-defaults '(gpt-font-lock-keywords nil t))
+  (font-lock-mode 1)
+  (font-lock-ensure))
 
 (provide 'gpt-mode)
 ;;; gpt-mode.el ends here 

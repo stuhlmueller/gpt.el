@@ -51,11 +51,12 @@
   '(("GPT-4.1" . (openai . "gpt-4.1"))
     ("GPT-4.5" . (openai . "gpt-4.5-preview"))
     ("o3" . (openai . "o3"))
+    ("o3-pro" . (openai . "o3-pro"))    
     ("o4-mini" . (openai . "o4-mini"))
     ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
     ("Claude 4 Sonnet" . (anthropic . "claude-sonnet-4-0"))
     ("Claude 4 Opus" . (anthropic . "claude-opus-4-0"))
-    ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-03-25")))
+    ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-06-05")))
   "Available models for GPT commands.
 Each entry is a cons cell where the car is the display name and
 the cdr is a cons cell of (API-TYPE . MODEL-ID)."
@@ -77,8 +78,9 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
     ("gpt-4.1" . "128000")
     ("gpt-4.5-preview" . "128000")
     ("o3" . "100000")
+    ("o3-pro" . "100000")    
     ("o4-mini" . "16000")
-    ("gemini-2.5-pro-preview-03-25" . "8192"))
+    ("gemini-2.5-pro-preview-06-05" . "8192"))
   "Maximum output tokens for each model."
   :type '(alist :key-type string :value-type string)
   :group 'gpt)
@@ -132,6 +134,13 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
 
 (defcustom gpt-use-named-buffers t
   "If non-nil, use named buffers for GPT output. Otherwise, use temporary buffers."
+  :type 'boolean
+  :group 'gpt)
+
+(defcustom gpt-use-markdown-mode t
+  "Whether to use markdown-mode features when available.
+When non-nil and markdown-mode is installed, gpt-mode will
+inherit markdown syntax highlighting and features."
   :type 'boolean
   :group 'gpt)
 

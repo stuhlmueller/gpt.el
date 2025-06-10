@@ -25,6 +25,14 @@ except ImportError:
 if TYPE_CHECKING:  # pragma: no cover
     from openai import Stream as OpenAIStream
 
+# Models that definitely don't support web search
+WEB_SEARCH_UNSUPPORTED_MODELS = {
+    "o3-pro",
+    "o3-mini",
+    "o4",
+    "o4-mini",
+}
+
 
 def call_openai(
     prompt: str,
@@ -84,7 +92,9 @@ def call_openai(
         }
 
         if web_search:
-            params["tools"] = [{"type": "web_search_preview"}]
+            # Check if the model explicitly doesn't support web search
+            if model not in WEB_SEARCH_UNSUPPORTED_MODELS:
+                params["tools"] = [{"type": "web_search_preview"}]
 
         if temperature != 0.0:
             params["temperature"] = temperature
