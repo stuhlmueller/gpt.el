@@ -19,6 +19,8 @@
 (require 'gpt-core)
 (require 'gpt-api)
 
+(declare-function gpt-mode "gpt-mode" nil)
+
 (defvar gpt-buffer-counter 0
   "Counter to ensure unique buffer names for GPT output buffers.")
 

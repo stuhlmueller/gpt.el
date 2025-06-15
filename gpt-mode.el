@@ -8,7 +8,7 @@
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
-;; Package-Requires: ((emacs "24.4") (gpt-core "1.3"))
+;; Package-Requires: ((emacs "25.1"))
 
 ;;; Commentary:
 
@@ -17,6 +17,15 @@
 ;;; Code:
 
 (require 'gpt-core)
+
+(declare-function gpt-chat-completion "gpt-ui" (&optional context-mode))
+(declare-function gpt-insert-command "gpt-ui" (command))
+(declare-function gpt-run-buffer "gpt-api" (output-buffer))
+(declare-function gpt-message "gpt-api" (message))
+(declare-function gpt-update-model-settings "gpt-core" nil)
+(declare-function gpt-create-output-buffer "gpt-ui" (command))
+(declare-function gpt-read-command "gpt-ui" (context-mode use-selection))
+(declare-function gpt-create-prompt-file "gpt-api" (content))
 
 (defface gpt-input-face
   '((t (:inherit comint-highlight-prompt)))
@@ -243,11 +252,11 @@ then specific delimiter lines override the content face.")
     (define-key map (kbd "C-c C-q") 'gpt-close-current)
     (define-key map (kbd "C-c C-x") 'gpt-close-all)
     (define-key map (kbd "C-c C-r") 'gpt-regenerate-response)
-    ;; Thinking mode commands
-    (define-key map (kbd "C-c T t") 'gpt-toggle-thinking)
-    (define-key map (kbd "C-c T i") 'gpt-toggle-interleaved-thinking)
-    (define-key map (kbd "C-c T w") 'gpt-toggle-web-search)
-    (define-key map (kbd "C-c T s") 'gpt-thinking-status)
+    ;; Thinking mode commands - using non-reserved sequences
+    (define-key map (kbd "C-c C-j t") 'gpt-toggle-thinking)
+    (define-key map (kbd "C-c C-j i") 'gpt-toggle-interleaved-thinking)
+    (define-key map (kbd "C-c C-j w") 'gpt-toggle-web-search)
+    (define-key map (kbd "C-c C-j s") 'gpt-thinking-status)
     map)
   "Keymap for GPT mode.")
 
@@ -270,6 +279,7 @@ integrates with markdown-mode if available."
   (use-local-map gpt-mode-map))
 
 (declare-function markdown-mode "markdown-mode" nil)
+
 (defvar markdown-fontify-code-blocks-natively)
 
 (defun gpt--setup-markdown-features ()
