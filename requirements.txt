@@ -1,5 +1,5 @@
 # Core dependencies for gpt.py
-openai==1.82.0
+openai>=1.86.0
 anthropic==0.52.0
 google-genai==1.16.1
 jsonlines==4.0.0

@@ -5,7 +5,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "anthropic>=0.52.0",
-    "openai>=1.82.0",
+    "openai>=1.86.0",
     "google-genai>=1.16.1",
     "jsonlines>=4.0.0",
 ]
