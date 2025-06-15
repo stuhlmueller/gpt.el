@@ -26,7 +26,7 @@
   :prefix "gpt-")
 
 (defcustom gpt-api-type 'anthropic
-  "The type of API to use. Either \\='openai, \\='anthropic, or \\='google."
+  "The type of API to use.  Either \\='openai, \\='anthropic, or \\='google."
   :type '(choice (const :tag "OpenAI" openai)
                  (const :tag "Anthropic" anthropic)
                  (const :tag "Google" google))
@@ -51,7 +51,7 @@
   '(("GPT-4.1" . (openai . "gpt-4.1"))
     ("GPT-4.5" . (openai . "gpt-4.5-preview"))
     ("o3" . (openai . "o3"))
-    ("o3-pro" . (openai . "o3-pro"))    
+    ("o3-pro" . (openai . "o3-pro"))
     ("o4-mini" . (openai . "o4-mini"))
     ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
     ("Claude 4 Sonnet" . (anthropic . "claude-sonnet-4-0"))
@@ -78,7 +78,7 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
     ("gpt-4.1" . "128000")
     ("gpt-4.5-preview" . "128000")
     ("o3" . "100000")
-    ("o3-pro" . "100000")    
+    ("o3-pro" . "100000")
     ("o4-mini" . "16000")
     ("gemini-2.5-pro-preview-06-05" . "8192"))
   "Maximum output tokens for each model."
@@ -116,9 +116,10 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
   :group 'gpt)
 
 (defvar gpt-thinking-budget "21333"
-  "Token budget for extended thinking mode (automatically set to 1/3 of max tokens).")
+  "Token budget for extended thinking mode.
+Automatically set to 1/3 of max tokens.")
 
-(defcustom gpt-python-path 
+(defcustom gpt-python-path
   (let* ((script-dir (when (or load-file-name buffer-file-name)
                        (file-name-directory (or load-file-name buffer-file-name))))
          (venv-python (when script-dir
@@ -133,7 +134,7 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
   :group 'gpt)
 
 (defcustom gpt-use-named-buffers t
-  "If non-nil, use named buffers for GPT output. Otherwise, use temporary buffers."
+  "If non-nil, use named buffers for GPT output.  Otherwise, use temporary buffers."
   :type 'boolean
   :group 'gpt)
 
@@ -197,11 +198,11 @@ have the same meaning as for `completing-read'."
          (thinking-budget (number-to-string thinking-budget-num)))
     (setq gpt-max-tokens max-tokens)
     (setq gpt-thinking-budget thinking-budget)
-    (message "Model settings updated: max_tokens=%s, thinking_budget=%s" 
+    (message "Model settings updated: max_tokens=%s, thinking_budget=%s"
              max-tokens thinking-budget)))
 
 ;; Initialize settings on load
 (gpt-update-model-settings)
 
 (provide 'gpt-core)
-;;; gpt-core.el ends here 
+;;; gpt-core.el ends here

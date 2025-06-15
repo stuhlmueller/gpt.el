@@ -44,8 +44,8 @@
             (format "GOOGLE_API_KEY=%s" gpt-google-key))
            process-environment))
          ;; Build command arguments
-         (cmd-args (list gpt-python-path gpt-script-path 
-                         api-key gpt-model gpt-max-tokens gpt-temperature 
+         (cmd-args (list gpt-python-path gpt-script-path
+                         api-key gpt-model gpt-max-tokens gpt-temperature
                          (symbol-name gpt-api-type) prompt-file)))
     ;; Add thinking mode arguments for Anthropic
     (when (eq gpt-api-type 'anthropic)
@@ -62,7 +62,7 @@
       (setq cmd-args (append cmd-args '("--web-search"))))
     ;; Validate API key
     (when (string= api-key "NOT SET")
-      (user-error "API key for %s is not set. Please configure %s"
+      (user-error "API key for %s is not set.  Please configure %s"
                   (symbol-name gpt-api-type)
                   (cond ((eq gpt-api-type 'openai) "gpt-openai-key")
                         ((eq gpt-api-type 'anthropic) "gpt-anthropic-key")
@@ -134,4 +134,4 @@ Append output stream to output-buffer."
         (gpt-message "Failed to start GPT process")))))
 
 (provide 'gpt-api)
-;;; gpt-api.el ends here 
+;;; gpt-api.el ends here

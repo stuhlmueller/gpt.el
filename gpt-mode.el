@@ -46,7 +46,8 @@
   '((((class color) (min-colors 88) (background light)) :foreground "royalblue" :weight bold)
     (((class color) (min-colors 88) (background dark)) :foreground "skyblue" :weight bold)
     (t :inherit font-lock-function-name-face :weight bold))
-  "Face for tool call blocks like [Searching for: ...] and [Got web search results]."
+  "Face for tool call blocks.
+Used for [Searching for: ...] and [Got web search results]."
   :group 'gpt)
 
 (defvar gpt-font-lock-keywords
@@ -63,11 +64,11 @@
   "Original gpt-font-lock-keywords for User/Assistant and code blocks.")
 
 (defun gpt--font-lock-scan-thinking-content (limit)
-  "Scan for gpt thinking content and set match data.
+  "Scan for gpt thinking content up to LIMIT and set match data.
 This function is intended for use in `font-lock-keywords'.
 It searches for a block of text that starts after a \"^[Thinking...]\"
 and ends before a \"^[Thinking done.]\", another \"^[Thinking...]\",
-or the `limit`.
+or the LIMIT.
 
 Point is moved to the end of the matched content region if a match is found.
 Returns t if a match is found and sets match-data, nil otherwise."
@@ -142,11 +143,11 @@ then specific delimiter lines override the content face.")
   "Switch between OpenAI, Anthropic, and Google models."
   (interactive)
   (let* ((current-model-name (car (rassoc (cons gpt-api-type gpt-model) gpt-available-models)))
-         (prompt (format "Choose model (current: %s): " 
-                         (or current-model-name 
+         (prompt (format "Choose model (current: %s): "
+                         (or current-model-name
                              (format "%s/%s" gpt-api-type gpt-model))))
          (choice (completing-read prompt
-                                  (mapcar #'car gpt-available-models) 
+                                  (mapcar #'car gpt-available-models)
                                   nil t nil nil current-model-name))
          (model-info (cdr (assoc choice gpt-available-models))))
     (if model-info
@@ -154,7 +155,7 @@ then specific delimiter lines override the content face.")
           (setq gpt-api-type (car model-info)
                 gpt-model (cdr model-info))
           (gpt-update-model-settings)  ; Update max_tokens and thinking_budget
-          (message "Switched to %s model: %s (max_tokens=%s, thinking_budget=%s)" 
+          (message "Switched to %s model: %s (max_tokens=%s, thinking_budget=%s)"
                    (symbol-name gpt-api-type) (cdr model-info)
                    gpt-max-tokens gpt-thinking-budget))
       (message "Model selection cancelled."))))
@@ -257,21 +258,24 @@ integrates with markdown-mode if available."
   (setq-local word-wrap t)
   (setq-local font-lock-multiline t)
   (setq-local font-lock-extra-managed-props '(invisible))
-  
+
   ;; Check if we should enhance with markdown features
   (if (and (fboundp 'markdown-mode)
            (bound-and-true-p gpt-use-markdown-mode))
       (gpt--setup-markdown-features)
     (gpt--setup-basic-features))
-  
+
   (add-to-invisibility-spec 'gpt-prefix)
   ;; Use the keymap we defined earlier
   (use-local-map gpt-mode-map))
 
+(declare-function markdown-mode "markdown-mode" nil)
+(defvar markdown-fontify-code-blocks-natively)
+
 (defun gpt--setup-markdown-features ()
   "Set up markdown-specific features for gpt-mode."
   ;; First apply markdown-mode settings
-  (let ((markdown-inhibit-mode-hooks t))  ; Prevent recursion
+  (let ((_markdown-inhibit-mode-hooks t))  ; Prevent recursion, unused var
     (markdown-mode))
   ;; Then apply our customizations
   (setq major-mode 'gpt-mode)
@@ -295,10 +299,10 @@ integrates with markdown-mode if available."
   (use-local-map gpt-mode-map))
 
 (defun gpt--setup-basic-features ()
-  "Set up basic text-mode features for gpt-mode."
+  "Set up basic `text-mode' features for gpt-mode."
   (setq-local font-lock-defaults '(gpt-font-lock-keywords nil t))
   (font-lock-mode 1)
   (font-lock-ensure))
 
 (provide 'gpt-mode)
-;;; gpt-mode.el ends here 
+;;; gpt-mode.el ends here

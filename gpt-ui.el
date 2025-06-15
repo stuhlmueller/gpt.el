@@ -122,9 +122,9 @@ If there is an active region, append as \"Selected region:\"."
             "*")))
 
 (defun gpt-create-output-buffer (command)
-  "Create a buffer to capture the output of the GPT process.
+  "Create a buffer to capture the output of the GPT process for COMMAND.
 If `gpt-use-named-buffers' is non-nil, create or get a named buffer.
-Otherwise, create a temporary buffer. Use the `gpt-mode' for the output buffer."
+Otherwise, create a temporary buffer.  Use the `gpt-mode' for the output buffer."
   (let ((output-buffer
          (if gpt-use-named-buffers
              (let ((buffer (get-buffer-create (gpt-get-output-buffer-name command))))
@@ -210,7 +210,7 @@ CONTEXT-MODE can be:
                         (intern choice)))))
   (let* ((full-context (gpt-get-context context-mode))
          (source-buffer-name (buffer-name))
-         (output-buffer (gpt-create-output-buffer 
+         (output-buffer (gpt-create-output-buffer
                         (format "Complete %s" source-buffer-name)))
          (instruction "Continue writing from the <cursor/> position. Match the style and format of the existing text. Provide as ``` code block with language indicator. No meta commentary."))
     ;; Switch to output buffer
@@ -232,7 +232,7 @@ CONTEXT-MODE can be:
   "Toggle extended thinking mode for Anthropic models (enabled by default)."
   (interactive)
   (setq gpt-thinking-enabled (not gpt-thinking-enabled))
-  (message "Extended thinking mode %s" 
+  (message "Extended thinking mode %s"
            (if gpt-thinking-enabled "enabled" "disabled")))
 
 ;;;###autoload
@@ -240,7 +240,7 @@ CONTEXT-MODE can be:
   "Toggle interleaved thinking mode for Anthropic models (enabled by default)."
   (interactive)
   (setq gpt-interleaved-thinking (not gpt-interleaved-thinking))
-  (message "Interleaved thinking mode %s" 
+  (message "Interleaved thinking mode %s"
            (if gpt-interleaved-thinking "enabled" "disabled")))
 
 ;;;###autoload
@@ -248,7 +248,7 @@ CONTEXT-MODE can be:
   "Toggle web search for Anthropic models."
   (interactive)
   (setq gpt-web-search (not gpt-web-search))
-  (message "Web search %s" 
+  (message "Web search %s"
            (if gpt-web-search "enabled" "disabled")))
 
 ;;;###autoload
@@ -262,4 +262,4 @@ CONTEXT-MODE can be:
            gpt-thinking-budget))
 
 (provide 'gpt-ui)
-;;; gpt-ui.el ends here 
+;;; gpt-ui.el ends here
