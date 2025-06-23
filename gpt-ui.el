@@ -8,7 +8,7 @@
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
-;; Package-Requires: ((emacs "24.4") (gpt-core "1.3") (gpt-api "1.3"))
+;; Package-Requires: ((emacs "25.1"))
 
 ;;; Commentary:
 
