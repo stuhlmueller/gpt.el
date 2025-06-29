@@ -11,6 +11,72 @@
 (require 'le-gpt-core)
 (require 'project)
 
+;; HISTORY
+(defvar le-gpt--context-history nil
+  "List of previously used context selections.")
+
+(defun le-gpt--save-context-to-history (selected-items)
+  "Save SELECTED-ITEMS to context history."
+  (let ((context-entry (list :timestamp (current-time)
+                             :items selected-items)))
+    (push context-entry le-gpt--context-history)
+    ;; Keep only last 10 entries
+    (setq le-gpt--context-history
+          (seq-take le-gpt--context-history 10))))
+
+(defun le-gpt--create-history-completions ()
+  "Create completion candidates from context history."
+  (let ((completions '()))
+    (cl-loop for i from 0
+             for entry in le-gpt--context-history
+             do (let* ((timestamp (plist-get entry :timestamp))
+                       (items (plist-get entry :items))
+                       (summary (le-gpt--format-context-summary items))
+                       (candidate (propertize
+                                   (format "History #%d: %s" (1+ i) summary)
+                                   'context-type 'history
+                                   'context-items items)))
+                  (push (cons candidate `((type . history)
+                                          (timestamp . ,timestamp)
+                                          (items . ,items)
+                                          (summary . ,summary)))
+                        completions)))
+    completions))
+
+(defun le-gpt--format-context-summary (items)
+  "Create a brief summary of context ITEMS."
+  (let ((files (seq-filter (lambda (item)
+                             (eq (get-text-property 0 'context-type item) 'file)) items))
+        (buffers (seq-filter (lambda (item)
+                               (eq (get-text-property 0 'context-type item) 'buffer)) items)))
+    (let ((file-names (when files
+                        (mapcar (lambda (f) (file-name-nondirectory f)) files)))
+          (buffer-names buffers)
+          (parts '()))
+      
+      ;; Add file summary
+      (when files
+        (let ((file-count (length files)))
+          (if (<= file-count 3)
+              (push (format "%s" (string-join file-names ", ")) parts)
+            (push (format "%s, +%d more files" 
+                          (string-join (seq-take file-names 2) ", ")
+                          (- file-count 2)) parts))))
+      
+      ;; Add buffer summary  
+      (when buffers
+        (let ((buffer-count (length buffers)))
+          (if (<= buffer-count 3)
+              (push (format "%s" (string-join buffer-names ", ")) parts)
+            (push (format "%s, +%d more buffers"
+                          (string-join (seq-take buffer-names 2) ", ")
+                          (- buffer-count 2)) parts))))
+      
+      (if parts
+          (string-join (nreverse parts) " | ")
+        "empty"))))
+
+
 ;; PROJECT CONTEXT
 
 (defvar le-gpt--selected-context-files nil
@@ -31,6 +97,10 @@ First %s is replaced with the list of files, second with their contents.")
                                          (eq (get-text-property 0 'context-type item) 'buffer))
                                        selected-items))
          (context-string ""))
+
+    ;; Save to history if we have selections
+    (when selected-items
+      (le-gpt--save-context-to-history selected-items))
 
     ;; Add file context
     (when selected-files
@@ -59,8 +129,7 @@ First %s is replaced with the list of files, second with their contents.")
                          (error nil)))
         (buffer-names (le-gpt--get-buffer-names)))
 
-
-    ;; Add buffers with rich metadata
+    ;; Add buffers with rich metadata (added first, will end up last)
     (dolist (buffer-name buffer-names)
       (let* ((buffer (get-buffer buffer-name))
              (candidate (propertize buffer-name
@@ -86,7 +155,7 @@ First %s is replaced with the list of files, second with their contents.")
                                 (last-used . ,last-used)))
               completions)))
 
-    ;; Add project files with rich metadata
+    ;; Add project files with rich metadata (added second, will be middle)
     (dolist (file project-files)
       (let* ((full-path (expand-file-name file (project-root (project-current))))
              (candidate (propertize file
@@ -105,6 +174,10 @@ First %s is replaced with the list of files, second with their contents.")
                                 (extension . ,extension)
                                 (lines . ,lines)))
               completions)))
+
+    ;; Add history entries LAST (will end up first due to append)
+    (setq completions (append (le-gpt--create-history-completions) completions))
+
     completions))
 
 (defun le-gpt--get-file-size (file-path)
@@ -160,9 +233,9 @@ First %s is replaced with the list of files, second with their contents.")
 
 (defun le-gpt--get-context-annotations (completions)
   "Get annotation function with dynamic padding for perfect alignment."
-  (let ((max-name-length (apply #'max 
-                                (mapcar (lambda (comp) (length (car comp))) 
-                                       completions))))
+  (let ((max-name-length (apply #'max
+                                (mapcar (lambda (comp) (length (car comp)))
+                                        completions))))
     (lambda (candidate)
       (let* ((metadata (assoc-default candidate completions))
              (type (assoc-default 'type metadata))
@@ -171,12 +244,19 @@ First %s is replaced with the list of files, second with their contents.")
              ;; Ensure minimum 4 spaces, but align all entries
              (padding (max 4 (- (+ max-name-length 4) current-length))))
         (cond
+         ((eq type 'history)
+          (let* ((timestamp (assoc-default 'timestamp metadata))
+                 (summary (assoc-default 'summary metadata)))
+            (format "%s%-8s %s"
+                    (make-string padding ?\s)
+                    "[History]"
+                    (le-gpt--format-time-ago timestamp))))
          ((eq type 'file)
           (let* ((path (assoc-default 'path metadata))
                  (size (assoc-default 'size metadata))
                  (ext (file-name-extension path))
                  (modified (assoc-default 'modified metadata)))
-            (format "%s%-8s %-8s %-8s %s" 
+            (format "%s%-8s %-8s %-8s %s"
                     (make-string padding ?\s)
                     "[File]"
                     (le-gpt--format-file-size size)
@@ -191,9 +271,9 @@ First %s is replaced with the list of files, second with their contents.")
                     (make-string padding ?\s)
                     "[Buffer]"
                     (if size (le-gpt--format-file-size size) "0B")
-                    (if mode 
-                        (format "(%s)" (replace-regexp-in-string "-mode$" "" (symbol-name mode))) 
-                        "")
+                    (if mode
+                        (format "(%s)" (replace-regexp-in-string "-mode$" "" (symbol-name mode)))
+                      "")
                     (if modified " *mod*" "")
                     (if (and file-path (not (file-exists-p file-path))) " *del*" ""))))
          (t ""))))))
@@ -206,8 +286,10 @@ First %s is replaced with the list of files, second with their contents.")
       (let* ((metadata (assoc-default candidate completions))
              (type (assoc-default 'type metadata))
              (file-count (length (seq-filter (lambda (c) (eq (assoc-default 'type (cdr c)) 'file)) completions)))
-             (buffer-count (length (seq-filter (lambda (c) (eq (assoc-default 'type (cdr c)) 'buffer)) completions))))
+             (buffer-count (length (seq-filter (lambda (c) (eq (assoc-default 'type (cdr c)) 'buffer)) completions)))
+             (history-count (length (seq-filter (lambda (c) (eq (assoc-default 'type (cdr c)) 'history)) completions))))
         (cond
+         ((eq type 'history) (format "🕒 Recent Context (%d)" history-count))
          ((eq type 'file) (format "📄 Project Files (%d)" file-count))
          ((eq type 'buffer) (format "📋 Buffers (%d)" buffer-count))
          (t "Other"))))))
@@ -259,12 +341,18 @@ First %s is replaced with the list of files, second with their contents.")
         (if (string-empty-p selection)
             (setq done t)
           ;; Find the original completion item to restore text properties
-          (let ((original-item (car (seq-find (lambda (comp) 
-                                                (string= (car comp) selection)) 
+          (let ((original-item (car (seq-find (lambda (comp)
+                                                (string= (car comp) selection))
                                               completions))))
             (when original-item
+
+              (if (eq (get-text-property 0 'context-type original-item) 'history)
+                  (progn
+                    ;; Use the stored items from history
+                    (setq selected-items (get-text-property 0 'context-items original-item))
+                    (setq done t))
               (push original-item selected-items)
-              (setq choices (delete selection choices)))))))
+              (setq choices (delete selection choices))))))))
 
     (nreverse selected-items)))
 
