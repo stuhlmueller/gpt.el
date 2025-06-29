@@ -99,7 +99,7 @@ If USE-CONTEXT is non-nil, select context interactively."
                   (buffer-substring-no-properties (region-beginning) (region-end)))))
     (switch-to-buffer-other-window output-buffer)
     (when context
-      (insert (format "User:\n\n```\n%s\n```\n\n" context)))
+      (insert (format "User:\n\n%s\n\n" context)))
     (when input
       (insert (format "User:\n\n```\n%s\n```\n\n" input)))
     (le-gpt--chat-insert-command command)
