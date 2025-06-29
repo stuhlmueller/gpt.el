@@ -153,7 +153,6 @@ First %s is replaced with the list of files, second with their contents.")
   "Get approximate last used time for BUFFER-NAME."
   (let ((buffer (get-buffer buffer-name)))
     (when buffer
-      ;; This is approximate - you might want to track this more precisely
       (with-current-buffer buffer
         (or (and (boundp 'buffer-display-time) buffer-display-time)
             (current-time))))))
@@ -259,12 +258,16 @@ First %s is replaced with the list of files, second with their contents.")
 
         (if (string-empty-p selection)
             (setq done t)
-          (push selection selected-items)
-          (setq choices (delete selection choices)))))
+          ;; Find the original completion item to restore text properties
+          (let ((original-item (car (seq-find (lambda (comp) 
+                                                (string= (car comp) selection)) 
+                                              completions))))
+            (when original-item
+              (push original-item selected-items)
+              (setq choices (delete selection choices)))))))
 
     (nreverse selected-items)))
 
-;; Keep existing helper functions
 (defun le-gpt--get-selected-files-contents (selected-context-files)
   "Get contents of SELECTED-CONTEXT-FILES as a formatted string."
   (let ((file-contents "")
