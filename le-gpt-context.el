@@ -1,4 +1,4 @@
-;;; le-gpt-project.el --- Project context functionality for le-gpt.el -*- lexical-binding: t; -*-
+;;; le-gpt-context.el --- Context functionality for le-gpt.el -*- lexical-binding: t; -*-
 
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
@@ -11,6 +11,8 @@
 (require 'le-gpt-core)
 (require 'project)
 
+;; PROJECT CONTEXT
+
 (defvar le-gpt--selected-context-files nil
   "List of project files whose content should be included as context.")
 
@@ -19,51 +21,32 @@
   "Format string for including project context in prompts.
 First %s is replaced with the list of files, second with their contents.")
 
-(defun le-gpt-clear-selected-context-files ()
-  "Clear the list of project files used as context."
-  (interactive)
-  (setq le-gpt--selected-context-files nil)
-  (message "Project file context cleared."))
-
-(defun le-gpt-select-project-files-for-context ()
-  "Prompt user to select files from project to use as context."
-  (let* ((relative-files (le-gpt--get-project-files))
-         ;; Remove already selected files from choices
-         (available-files (seq-difference relative-files le-gpt--selected-context-files)))
-    (when-let ((new-selections (le-gpt--read-multiple-files available-files)))
-      (setq le-gpt--selected-context-files
-            (append le-gpt--selected-context-files new-selections))
-      (message "Added %d files. Total files selected: %d"
-               (length new-selections)
-               (length le-gpt--selected-context-files)))))
-
-(defun le-gpt-deselect-project-files-for-context ()
-  "Remove multiple files from the current project context."
-  (if (null le-gpt--selected-context-files)
-      (message "No files currently selected")
-    (let ((to-remove (le-gpt--read-multiple-files-to-remove le-gpt--selected-context-files)))
-      (setq le-gpt--selected-context-files
-            (seq-difference le-gpt--selected-context-files to-remove))
-      (message "Removed %d files. Remaining files: %d"
-               (length to-remove)
-               (length le-gpt--selected-context-files)))))
-
-(defun le-gpt--get-project-context (select-context-files)
-  "Get the formatted project context string based on the selected files.
-If SELECT-CONTEXT-FILES is non-nil, prompt for new file selection.
-Else use globally selected context files."
-  (let ((selected-context-files (le-gpt--read-or-get-selected-context-files select-context-files)))
+(defun le-gpt--get-context ()
+  "Get the formatted context string based on the selected context."
+  (let ((selected-context-files (le-gpt--read-multiple-files
+                                 (le-gpt--get-project-files)))
+        (selected-context-buffers (le-gpt--read-multiple-buffers
+                                   (le-gpt--get-buffer-names)))
+        (context-string ""))
+    
+    ;; Add file context
     (when selected-context-files
-      (format le-gpt--project-context-format
-              (mapconcat #'identity selected-context-files "\n")
-              (le-gpt--get-selected-files-contents selected-context-files)))))
-
-(defun le-gpt--read-or-get-selected-context-files (temp-context-files)
-  "Get selected context files or prompt for new ones.
-If TEMP-CONTEXT-FILES is non-nil, prompt for new files."
-  (if temp-context-files (le-gpt--read-multiple-files
-                          (le-gpt--get-project-files))
-    le-gpt--selected-context-files))
+      (setq context-string
+            (concat context-string
+                    (format le-gpt--project-context-format
+                            (mapconcat #'identity selected-context-files "\n")
+                            (le-gpt--get-selected-files-contents selected-context-files)))))
+    
+    ;; Add buffer context
+    (when selected-context-buffers
+      (setq context-string
+            (concat context-string
+                    (format "Buffer Context:\n%s\n\nBuffer Contents:\n%s\n\n"
+                            (mapconcat #'identity selected-context-buffers "\n")
+                            (le-gpt--get-selected-buffers-contents selected-context-buffers)))))
+    
+    (when (not (string-empty-p context-string))
+      context-string)))
 
 (defun le-gpt--get-selected-files-contents (selected-context-files)
   "Get contents of SELECTED-CONTEXT-FILES as a formatted string."
@@ -147,5 +130,55 @@ Shows files selected for removal.  Empty input finishes selection."
           (setq choices (delete selection choices)))))
     (nreverse files-to-remove)))
 
-(provide 'le-gpt-project)
-;;; le-gpt-project.el ends here
+;; BUFFER CONTEXT
+(defun le-gpt--get-buffer-names ()
+  "Get list of buffer names, excluding special buffers."
+  (seq-filter (lambda (name)
+                (not (string-match-p "^\\*" name)))
+              (mapcar #'buffer-name (buffer-list))))
+
+(defun le-gpt--read-multiple-buffers (buffers)
+  "Let user select multiple BUFFERS using completion."
+  (let ((choices buffers)
+        (selection nil)
+        (done nil)
+        (selected-buffers '()))
+    (while (not done)
+      (let ((selected-help (if selected-buffers
+                               (concat "Currently selected buffers:\n"
+                                       (mapconcat (lambda (b) (concat "  - " b))
+                                                  selected-buffers "\n")
+                                       "\n\n")
+                             "No buffers selected yet\n\n")))
+        (setq selection
+              (completing-read
+               (format "%sSelect buffer (empty input when done) [%d selected]: "
+                       selected-help
+                       (length selected-buffers))
+               choices nil nil nil nil ""))
+
+        (if (string-empty-p selection)
+            (setq done t)
+          (push selection selected-buffers)
+          (setq choices (delete selection choices)))))
+    (nreverse selected-buffers)))
+
+(defun le-gpt--get-selected-buffers-contents (selected-context-buffers)
+  "Get contents of SELECTED-CONTEXT-BUFFERS as a formatted string."
+  (let ((buffer-contents ""))
+    (dolist (buffer-name selected-context-buffers)
+      (condition-case err
+          (when-let ((buffer (get-buffer buffer-name)))
+            (setq buffer-contents
+                  (concat buffer-contents
+                          (format "\nBuffer: %s\n```\n%s\n```\n"
+                                  buffer-name
+                                  (with-current-buffer buffer
+                                    (buffer-string))))))
+        (error
+         (message "Error reading buffer %s: %s" buffer-name (error-message-string err)))))
+    buffer-contents))
+
+
+(provide 'le-gpt-context)
+;;; le-gpt-context.el ends here

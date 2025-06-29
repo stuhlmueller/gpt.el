@@ -11,6 +11,7 @@ The aim is to make sure Emacs stays up-to-date with modern GPT support, essentia
 
 ## Changelog
 
+  - 0.5.0: Add buffers as context; remove global context file support.
   - 0.4.0: Add DeepSeek support
 
 ## Features
@@ -36,9 +37,8 @@ You can load previously saved chats with `M-x le-gpt-chat-load-file`.
 
 - **Region Transformation**: Select a region you want GPT to transform. Use `M-x le-gpt-transform-region` to transform the selected region using GPT. Again, I use `C-M-t` as a shortcut.
 
-- **Project Context**: Select files from your project that GPT should use as context. 
-Globally select project files to be used as context via `M-x le-gpt-select-project-files` or select local, per-command context by running the above commands with a prefix argument (`C-u`). Context is used by chat, completion, and region transforms. 
-To deselect global context files, use `M-x le-gpt-deselect-project-files` or `M-x le-gpt-clear-selected-context-files` to clear the entire selection.
+- **Context**: Select files from your project and buffers that GPT should use as context. 
+You can select per-command context by running the above commands with a prefix argument (`C-u`). Context is used by chat, completion, and region transforms. 
 
 ### Mandatory GIFs
 
@@ -47,7 +47,7 @@ To deselect global context files, use `M-x le-gpt-deselect-project-files` or `M-
 | ![le-gpt-chat-demo](./resources/le-gpt-chat.gif)                                 | ![le-gpt-complete-at-point-demo](./resources/le-gpt-complete-at-point.gif) |
 
 
-| Project Context                                                                               | Region Transformation                                             |
+| Context                                                                               | Region Transformation                                             |
 |-----------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
 | ![le-gpt-with-context-demo](./resources/le-gpt-project-context.gif)                           | ![le-gpt-transform-region-demo](./resources/le-gpt-transform.gif) |
 
@@ -125,6 +125,10 @@ Basic configuration:
 
 ## Usage
 
+### Context
+You can add context for all of the below functionality by calling the functions with a prefix argument.
+You'll then be prompted to add project files and buffers as context.
+
 ### Chat Interface
 
 Start a chat session:
@@ -132,32 +136,11 @@ Start a chat session:
 M-x le-gpt-chat
 ```
 
-If you provide a prefix argument, you can select context files for a single query.
-
 ### Completion at Point
 
 Get completions based on your current cursor position:
 ```elisp
 M-x le-gpt-complete-at-point
-```
-
-### Project Context
-
-Set project files as context:
-```elisp
-M-x le-gpt-select-project-files
-```
-The context will be used by chat, completion, and region transforms.
-
-*Note that these files are persisted between multiple calls.*
-
-To deselect files:
-```elisp
-M-x le-gpt-deselect-project-files
-```
-Or, to clear the entire selection:
-```elisp
-M-x le-gpt-clear-selected-context-files
 ```
 
 ### Region Transformation
@@ -177,13 +160,6 @@ M-x le-gpt-list-buffers
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues and pull requests on GitHub.
-
-### Feature roadmap
-
- - [ ] Ability to generate images (?)
- - [ ] Add all files of the current project as context (?)
- - [ ] Ability to let GPT decide which context files it needs
- - [ ] RAG for indexing files (?)
 
 ## License
 
