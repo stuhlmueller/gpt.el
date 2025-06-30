@@ -260,6 +260,8 @@ If USE-CONTEXT is non-nil, select context interactively."
     (define-key map (kbd "x") #'le-gpt-buffer-list-execute)
     (define-key map (kbd "C-c C-t") 'le-gpt-buffer-list-generate-buffer-name)
     (define-key map (kbd "C-c C-s") 'le-gpt-buffer-list-save-buffer)
+    (define-key map (kbd "/") #'le-gpt-buffer-list-filter)
+    (define-key map (kbd "C-c C-c") #'le-gpt-buffer-list-clear-filter)
     (define-key map (kbd "g r") #'le-gpt-buffer-list-refresh)
     (define-key map (kbd "q") #'quit-window)
     map)
@@ -291,8 +293,21 @@ If USE-CONTEXT is non-nil, select context interactively."
   "Refresh the GPT buffers list."
   (interactive)
   (let ((inhibit-read-only t)
-        (gpt-buffers (le-gpt--get-gpt-buffers)))
+        (all-gpt-buffers (le-gpt--get-gpt-buffers))
+        (filtered-buffers (if (string-empty-p le-gpt-buffer-list--filter-string)
+                             (le-gpt--get-gpt-buffers)
+                           (seq-filter (lambda (buf)
+                                        (le-gpt--buffer-matches-filter-p 
+                                         buf le-gpt-buffer-list--filter-string))
+                                      (le-gpt--get-gpt-buffers)))))
     (erase-buffer)
+    (when (not (string-empty-p le-gpt-buffer-list--filter-string))
+      (insert (propertize (format "Filter: %s (%d/%d buffers)\n" 
+                                 le-gpt-buffer-list--filter-string
+                                 (length filtered-buffers)
+                                 (length all-gpt-buffers))
+                         'face 'font-lock-comment-face))
+      (insert "\n"))
     (setq tabulated-list-entries
           (mapcar (lambda (buffer)
                     (let ((name (buffer-name buffer))
@@ -306,7 +321,7 @@ If USE-CONTEXT is non-nil, select context interactively."
                                          "n/a"))))
                       (list buffer
                             (vector " " name model timestamp))))
-                  gpt-buffers))
+                  filtered-buffers))
     (tabulated-list-print t)))
 
 (defun le-gpt-buffer-list-save-buffer ()
@@ -388,6 +403,34 @@ If USE-CONTEXT is non-nil, select context interactively."
     (dolist (buffer marked-buffers)
       (kill-buffer buffer))
     (le-gpt-buffer-list-refresh)))
+
+(defvar le-gpt-buffer-list--filter-string ""
+  "Current filter string for GPT buffer list.")
+
+(defun le-gpt-buffer-list-filter ()
+  "Filter GPT buffers by regex search on their contents."
+  (interactive)
+  (let ((filter (read-string "Filter buffers by content (regex): " 
+                            le-gpt-buffer-list--filter-string)))
+    (setq le-gpt-buffer-list--filter-string filter)
+    (le-gpt-buffer-list-refresh)))
+
+(defun le-gpt-buffer-list-clear-filter ()
+  "Clear the current filter."
+  (interactive)
+  (setq le-gpt-buffer-list--filter-string "")
+  (le-gpt-buffer-list-refresh)
+  (message "Filter cleared"))
+
+(defun le-gpt--buffer-matches-filter-p (buffer filter)
+  "Return t if BUFFER content matches FILTER regex."
+  (if (string-empty-p filter)
+      t
+    (with-current-buffer buffer
+      (save-excursion
+        (goto-char (point-min))
+        (re-search-forward filter nil t)))))
+
 
 (provide 'le-gpt-chat)
 ;;; le-gpt-chat.el ends here
