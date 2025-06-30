@@ -9,7 +9,7 @@
 ;;; Code:
 
 (require 'le-gpt-core)
-(require 'le-gpt-project)
+(require 'le-gpt-context)
 
 (defcustom le-gpt-transform-region-instructions
   "You should transform what is inside <region>. Only change what was requested without anything else, e.g., no explanatory comments, no triple backticks. Your response will replace what is inside region as is."
@@ -17,18 +17,18 @@
   :type 'string
   :group 'le-gpt)
 
-(defun le-gpt-transform-region-with-prompt (temp-context-files)
+(defun le-gpt-transform-region-with-prompt (use-context)
   "Transform the selected region.
 Ask user for the transformation command and replace region with response.
-If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
+If USE-CONTEXT is non-nil, select context files interactively."
   (let* ((start (if (use-region-p) (region-beginning) (point-min)))
          (end (if (use-region-p) (region-end) (point-max)))
          (region-content (buffer-substring-no-properties start end))
          (buffer-before (buffer-substring-no-properties (point-min) start))
          (buffer-after (buffer-substring-no-properties end (point-max)))
-         (project-context (le-gpt--get-project-context temp-context-files))
+         (context (if use-context (le-gpt--get-context) nil))
          (command (le-gpt--read-command))
-         (prompt (concat (when project-context (concat "User:\n\n" project-context))
+         (prompt (concat (when context (concat "User:\n\n" context))
                          "User: " command "\n"
                          "<region>" region-content "<region>" "\n"
                          le-gpt-transform-region-instructions "\n"

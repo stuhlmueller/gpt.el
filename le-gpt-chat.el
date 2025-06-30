@@ -9,7 +9,7 @@
 ;;; Code:
 
 (require 'le-gpt-core)
-(require 'le-gpt-project)
+(require 'le-gpt-context)
 (require 'markdown-mode)
 
 (defcustom le-gpt-chat-generate-buffer-name-instruction "Create a title with a maximum of 50 chars for the chat above. Return a single title, nothing else. No quotes."
@@ -87,19 +87,19 @@ Provide text in buffer as input & append stream to BUFFER."
     (message "Le GPT: Running command...")
     (font-lock-update)))
 
-(defun le-gpt-chat-start (temp-context-files)
+(defun le-gpt-chat-start (use-context)
   "Start chat with GPT in new buffer.
 If region is active, use the region as input.
 Otherwise, use the entire buffer as input.
-If TEMP-CONTEXT-FILES is non-nil, select context files interactively."
-  (let* ((project-context (le-gpt--get-project-context temp-context-files))
+If USE-CONTEXT is non-nil, select context interactively."
+  (let* ((context (if use-context (le-gpt--get-context) nil))
          (command (le-gpt--read-command))
          (output-buffer (le-gpt--chat-create-output-buffer command))
          (input (when (use-region-p)
                   (buffer-substring-no-properties (region-beginning) (region-end)))))
     (switch-to-buffer-other-window output-buffer)
-    (when project-context
-      (insert (format "User:\n\n```\n%s\n```\n\n" project-context)))
+    (when context
+      (insert (format "User:\n\n%s\n\n" context)))
     (when input
       (insert (format "User:\n\n```\n%s\n```\n\n" input)))
     (le-gpt--chat-insert-command command)
