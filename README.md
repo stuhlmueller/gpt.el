@@ -11,34 +11,24 @@ The aim is to make sure Emacs stays up-to-date with modern GPT support, essentia
 
 ## Changelog
 
+  - 0.6.0: Add support for filtering buffer list via regex on content. Add optional `le-gpt-consult-buffers` function.
   - 0.5.0: Add buffers as context; remove global context file support.
   - 0.4.0: Add DeepSeek support
 
 ## Features
 
-
-- **Chat Interface**: Create and manage multiple chat sessions with GPT. Use `M-x le-gpt-chat` to start a session. Key bindings in chat buffers include:
-  - `C-c C-c`: Send follow-up command
-  - `C-c C-p`: Toggle prefix visibility
-  - `C-c C-b`: Copy code block at point
-  - `C-c C-t`: Generate descriptive buffer name from its content
-  - `C-c C-s`: Save the current buffer
+- **Chat Interface**: Create and manage multiple chat sessions with GPT. Use `M-x le-gpt-chat` to start a session. See [usage](#chat-interface) for more details. 
 
 - **Chat Buffer List**: Display a list of all GPT chat buffers with `M-x le-gpt-list-buffers`. 
-This feature allows you to manage and navigate through your GPT-related buffers efficiently.
-Mark buffers you want to delete with `d`. Execute those deletions with `x`. Unmark with `u`.
-You can visit a buffer in the list by hitting `RET` and refresh the list with `g r`.
-Generating buffer names with gpt via `C-c C-t` also works in the buffer list.
+This feature allows you to manage and navigate through your chat buffers efficiently.
+See [usage](#buffer-list) for more details.
 
-- **Save & load chats**: Save a chat when visiting a buffer (or in the buffer list) with `C-c C-s` (or `M-x le-gpt-chat-save-buffer` and `M-x le-gpt-buffer-list-save-buffer`, respectively).
-You can load previously saved chats with `M-x le-gpt-chat-load-file`. 
+- **Completion at Point**: Let GPT complete what you're currently writing. Use `M-x le-gpt-complete-at-point` to get suggestions based on your current cursor position. See [usage](#completion-at-point) for more details.
 
-- **Completion at Point**: Let GPT complete what you're currently writing. Use `M-x le-gpt-complete-at-point` to get suggestions based on your current cursor position. Suggest to bind this to a convenient key. I use `C-M-n`.
-
-- **Region Transformation**: Select a region you want GPT to transform. Use `M-x le-gpt-transform-region` to transform the selected region using GPT. Again, I use `C-M-t` as a shortcut.
+- **Region Transformation**: Select a region you want GPT to transform. Use `M-x le-gpt-transform-region` to transform the selected region using GPT. See [usage](#region-transformation) for more details.
 
 - **Context**: Select files from your project and buffers that GPT should use as context. 
-You can select per-command context by running the above commands with a prefix argument (`C-u`). Context is used by chat, completion, and region transforms. 
+You can select per-command context by running the above commands with a prefix argument (`C-u`). Context is used by chat, completion, and region transforms. See [usage](#context) for more details.
 
 ### Mandatory GIFs
 
@@ -77,15 +67,21 @@ Here's how to install it with [straight](https://github.com/radian-software/stra
 
 ```elisp
 (use-package le-gpt
+  :after evil
   :bind (("M-C-g" . le-gpt-chat)
          ("M-C-n" . le-gpt-complete-at-point)
          ("M-C-t" . le-gpt-transform-region)
-         ("M-C-s" . le-gpt-select-project-files)
-         ("M-C-d" . le-gpt-deselect-project-files))
+         ;; if you use consult
+         ("C-c C-s" . le-gpt-consult-buffers))
   :config
-  ;; you need to set at least one of the following
-  (setq le-gpt-openai-key "your-openai-key-here")
-  (setq le-gpt-anthropic-key "your-anthropic-key-here"))
+  ;; set default values as you wish
+  (setq le-gpt-api-type 'anthropic)
+  (setq le-gpt-model "claude-sonnet-4-20250514")
+  (setq le-gpt-max-tokens 10000)
+  
+  (setq le-gpt-openai-key "xxx")
+  (setq le-gpt-anthropic-key "xxx")
+  (setq le-gpt-deepseek-key "xxx"))
 ```
 
 If you're using `evil`, you'll want to add
@@ -98,6 +94,8 @@ If you're using `evil`, you'll want to add
       (kbd "u") #'le-gpt-buffer-list-unmark
       (kbd "x") #'le-gpt-buffer-list-execute
       (kbd "gr") #'le-gpt-buffer-list-refresh
+      (kbd "/") #'le-gpt-buffer-list-filter
+      (kbd "C-c C-s") #'le-gpt-consult-buffers
       (kbd "q") #'quit-window))
 ```
 
@@ -115,19 +113,18 @@ Basic configuration:
 (setq le-gpt-deepseek-key "sk-...")
 
 ;; Model Parameters (optional)
-(setq le-gpt-model "gpt-4o")
-(setq le-gpt-max-tokens 2000)
-(setq le-gpt-temperature 0)
-
-;; API Selection (default is 'openai)
 (setq le-gpt-api-type 'anthropic)
+(setq le-gpt-model "claude-sonnet-4-20250514") ;; make sure this matches le-gpt-api-type
+(setq le-gpt-max-tokens 10000)
+(setq le-gpt-temperature 0)
 ```
 
 ## Usage
 
 ### Context
-You can add context for all of the below functionality by calling the functions with a prefix argument.
+You can add context for all of the below functionality by calling the functions with a prefix argument (`C-u`).
 You'll then be prompted to add project files and buffers as context.
+For convenience, you also have the option to use a previous context selection.
 
 ### Chat Interface
 
@@ -135,6 +132,36 @@ Start a chat session:
 ```elisp
 M-x le-gpt-chat
 ```
+
+Key bindings in chat buffers include:
+  - `C-c C-c`: Send follow-up command
+  - `C-c C-p`: Toggle prefix visibility
+  - `C-c C-b`: Copy code block at point
+  - `C-c C-t`: Generate descriptive buffer name from its content
+  - `C-c C-s`: Save the current buffer
+
+### Buffer List
+
+Display a list of all GPT buffers (created via `le-gpt-chat`):
+```elisp
+M-x le-gpt-list-buffers
+```
+
+#### Filtering the list
+You can narrow down the list by regex'ing over the content pressing `/` followed by your regex.
+To reset the filter, hit `C-c C-r`.
+
+#### Executing commands
+Mark buffers you want to delete with `d`. Execute those deletions with `x`. Unmark with `u`.
+You can visit a buffer in the list by hitting `RET` and refresh the list with `g r`.
+
+#### Generating buffer names
+Generating buffer names with gpt via `C-c C-t` also works in the buffer list.
+
+#### Saving & loading buffers
+Save a chat when visiting a buffer (or in the buffer list) with `C-c C-s` (or `M-x le-gpt-chat-save-buffer` and `M-x le-gpt-buffer-list-save-buffer`, respectively).
+You can load previously saved chats with `M-x le-gpt-chat-load-file`. 
+
 
 ### Completion at Point
 
@@ -148,13 +175,6 @@ M-x le-gpt-complete-at-point
 Transform selection via:
 ```elisp
 M-x le-gpt-transform-region
-```
-
-### Buffer List
-
-Display a list of all GPT buffers:
-```elisp
-M-x le-gpt-list-buffers
 ```
 
 ## Contributing

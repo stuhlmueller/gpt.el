@@ -24,7 +24,7 @@
     (define-key map (kbd "C-c C-t") 'le-gpt-buffer-list-generate-buffer-name)
     (define-key map (kbd "C-c C-s") 'le-gpt-buffer-list-save-buffer)
     (define-key map (kbd "/") #'le-gpt-buffer-list-filter)
-    (define-key map (kbd "C-c C-c") #'le-gpt-buffer-list-clear-filter)
+    (define-key map (kbd "C-c C-r") #'le-gpt-buffer-list-clear-filter)
     (define-key map (kbd "g r") #'le-gpt-buffer-list-refresh)
     (define-key map (kbd "q") #'quit-window)
     map)
