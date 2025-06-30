@@ -49,7 +49,7 @@ You can select per-command context by running the above commands with a prefix a
 
 | Context                                                                               | Region Transformation                                             |
 |-----------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
-| ![le-gpt-with-context-demo](./resources/le-gpt-project-context.gif)                           | ![le-gpt-transform-region-demo](./resources/le-gpt-transform.gif) |
+| ![le-gpt-with-context-demo](./resources/le-gpt-context.gif)                           | ![le-gpt-transform-region-demo](./resources/le-gpt-transform.gif) |
 
 ...and a screenshot for a small buffer list for completeness
 ![le-gpt-buffer-list](./resources/le-gpt-buffer-list.png)
