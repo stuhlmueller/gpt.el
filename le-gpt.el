@@ -4,7 +4,7 @@
 
 ;; Author: Andreas Stuhlmueller <andreas@ought.org>
 ;; Maintainer: Anselm Coogan <anselm.coogan@gmail.com>
-;; Version: 0.5.0
+;; Version: 0.6.0
 ;; Keywords: openai, anthropic, deepseek, gpt, claude, language, copilot, convenience, tools, llm
 ;; URL: https://github.com/AnselmC/le-gpt.el
 ;; License: MIT
@@ -26,7 +26,7 @@
 (require 'markdown-mode)
 
 (require 'le-gpt-core)
-(require 'le-gpt-chat)
+(require 'le-gpt-chat)   
 (require 'le-gpt-transform)
 (require 'le-gpt-completion)
 (require 'le-gpt-context)

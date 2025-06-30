@@ -12,7 +12,8 @@
 (require 'le-gpt-context-lang)
 
 (defun le-gpt--get-buffer-names ()
-  "Get list of buffer names, excluding special buffers, project file buffers, and non-text buffers."
+  "Get list of buffer names, excluding special buffers,
+project file buffers, and non-text buffers."
   (let ((project-files (condition-case nil
                            (when (project-current)
                              (let ((project-root (project-root (project-current))))
@@ -54,7 +55,8 @@
                 (mapcar #'buffer-name (buffer-list)))))
 
 (defun le-gpt--get-selected-buffers-contents (selected-context-buffers)
-  "Get contents of SELECTED-CONTEXT-BUFFERS as a formatted string with proper syntax highlighting."
+  "Get contents of SELECTED-CONTEXT-BUFFERS
+as a formatted string with proper syntax highlighting."
   (let ((buffer-contents ""))
     (dolist (buffer-name selected-context-buffers)
       (condition-case err

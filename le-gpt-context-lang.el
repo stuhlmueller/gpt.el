@@ -79,7 +79,8 @@
      (t "text"))))
 
 (defun le-gpt--get-language-for-buffer (buffer)
-  "Get the appropriate markdown language identifier for BUFFER based on its major mode."
+  "Get the appropriate markdown language identifier
+for BUFFER based on its major mode."
   (when buffer
     (with-current-buffer buffer
       (let ((mode-name (symbol-name major-mode)))

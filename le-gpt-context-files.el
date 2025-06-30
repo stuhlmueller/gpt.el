@@ -31,7 +31,8 @@ First %s is replaced with the list of files, second with their contents.")
       (error "Not in any project recognized by project.el"))))
 
 (defun le-gpt--get-selected-files-contents (selected-context-files)
-  "Get contents of SELECTED-CONTEXT-FILES as a formatted string with proper syntax highlighting."
+  "Get contents of SELECTED-CONTEXT-FILES as a formatted
+string with proper syntax highlighting."
   (let ((file-contents "")
         (project-root (project-root (project-current))))
     (dolist (file selected-context-files)
