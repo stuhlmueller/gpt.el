@@ -50,12 +50,13 @@
 (defcustom gpt-available-models
   '(("GPT-4.1" . (openai . "gpt-4.1"))
     ("GPT-4.5" . (openai . "gpt-4.5-preview"))
+    ("GPT-5" . (openai . "gpt-5"))
     ("o3" . (openai . "o3"))
     ("o3-pro" . (openai . "o3-pro"))
     ("o4-mini" . (openai . "o4-mini"))
     ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
     ("Claude 4 Sonnet" . (anthropic . "claude-sonnet-4-0"))
-    ("Claude 4 Opus" . (anthropic . "claude-opus-4-0"))
+    ("Claude 4.1 Opus" . (anthropic . "claude-opus-4-1-20250805"))
     ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-06-05")))
   "Available models for GPT commands.
 Each entry is a cons cell where the car is the display name and
@@ -72,11 +73,13 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
   '(("claude-3-7-sonnet-latest" . "64000")
     ("claude-sonnet-4-0" . "64000")
     ("claude-opus-4-0" . "32000")
+    ("claude-opus-4-1-20250805" . "32000")    
     ("claude-3-5-sonnet-latest" . "8192")
     ("claude-3-5-haiku-latest" . "8192")
     ("claude-3-opus-latest" . "4096")
     ("gpt-4.1" . "128000")
     ("gpt-4.5-preview" . "128000")
+    ("gpt-5" . "400000")
     ("o3" . "100000")
     ("o3-pro" . "100000")
     ("o4-mini" . "16000")
