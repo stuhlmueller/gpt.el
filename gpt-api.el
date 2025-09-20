@@ -46,7 +46,10 @@
          ;; Build command arguments
          (cmd-args (list gpt-python-path gpt-script-path
                          api-key gpt-model gpt-max-tokens gpt-temperature
-                         (symbol-name gpt-api-type) prompt-file)))
+                         (symbol-name gpt-api-type) prompt-file))
+         ;; Create a hidden buffer to capture stderr to avoid default
+         ;; sentinel inserting "Process ... finished" messages.
+         (stderr-buffer (generate-new-buffer " *gpt-stderr*")))
     ;; Add thinking mode arguments for Anthropic
     (when (eq gpt-api-type 'anthropic)
       (when gpt-thinking-enabled
@@ -72,15 +75,39 @@
       (user-error "GPT script not found at %s" gpt-script-path))
     ;; Create process with error handling
     (condition-case err
-        (make-process
-         :name "gpt"
-         :buffer buffer
-         :command cmd-args
-         :coding 'utf-8-unix
-         :connection-type 'pipe
-         ;; Capture stderr into the same output buffer so users see errors inline.
-         :stderr buffer)
+        (let* ((proc (make-process
+                      :name "gpt"
+                      :buffer buffer
+                      :command cmd-args
+                      :coding 'utf-8-unix
+                      :connection-type 'pipe
+                      ;; Route stderr to hidden buffer; we'll mirror to BUFFER manually.
+                      :stderr stderr-buffer))
+               (stderr-proc (and (buffer-live-p stderr-buffer)
+                                  (get-buffer-process stderr-buffer))))
+          ;; Remember stderr buffer so we can clean it later.
+          (process-put proc 'gpt-stderr-buffer stderr-buffer)
+          ;; Mirror stderr chunks into the main output buffer without default sentinel noise.
+          (when stderr-proc
+            (set-process-filter stderr-proc
+                                (lambda (_p chunk)
+                                  (when (buffer-live-p buffer)
+                                    (with-current-buffer buffer
+                                      (let ((at-eob (= (point) (point-max))))
+                                        (save-excursion
+                                          (goto-char (point-max))
+                                          (insert chunk))
+                                        (when at-eob (goto-char (point-max))))))))
+            ;; Prevent default "Process ... finished" insertion; clean hidden buffer on exit.
+            (set-process-sentinel stderr-proc
+                                  (lambda (p _msg)
+                                    (let ((buf (process-buffer p)))
+                                      (when (buffer-live-p buf)
+                                        (kill-buffer buf))))))
+          proc)
       (error
+       (when (buffer-live-p stderr-buffer)
+         (kill-buffer stderr-buffer))
        (gpt-message "Failed to start process: %s" (error-message-string err))
        nil))))
 
@@ -101,6 +128,10 @@
        (cancel-timer timer))
      (when (file-exists-p prompt-file)
        (delete-file prompt-file))
+     ;; Clean up stderr buffer if present
+     (let ((stderr-buf (process-get proc 'gpt-stderr-buffer)))
+       (when (buffer-live-p stderr-buf)
+         (kill-buffer stderr-buf)))
      (when (eq (process-status proc) 'exit)
        (with-current-buffer (process-buffer proc)
          (save-excursion
