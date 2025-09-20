@@ -4,16 +4,17 @@ These tests make real API calls and require valid API keys to be set in environm
 Unit tests for individual providers are in providers/test_*.py files.
 """
 
-import sys
-import os
-import pytest
 import io
+import os
+import sys
+
+import pytest
 
 # Import functions and constants from gpt.py and providers
 from gpt import print_and_collect
 from providers.anthropic_provider import stream_anthropic
-from providers.openai_provider import call_openai
 from providers.google_provider import stream_google
+from providers.openai_provider import call_openai
 
 # Common parameters for integration tests
 MAX_TOKENS_INT = 200  # Reduced for faster tests
@@ -28,7 +29,7 @@ WEB_SEARCH_PROMPT = "User: What were the top 3 news headlines on the BBC News we
 
 @pytest.mark.integration
 @pytest.mark.anthropic
-def test_anthropic_basic_integration(monkeypatch):
+def test_anthropic_basic_integration(monkeypatch) -> None:
     """Integration test for basic Anthropic functionality with real API."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key or api_key == "NOT SET":
@@ -37,7 +38,7 @@ def test_anthropic_basic_integration(monkeypatch):
     model = "claude-3-haiku-20240307"  # Using a fast, cheap model for tests
 
     mock_stdout = io.StringIO()
-    monkeypatch.setattr(sys, 'stdout', mock_stdout)
+    monkeypatch.setattr(sys, "stdout", mock_stdout)
 
     try:
         stream = stream_anthropic(
@@ -62,7 +63,7 @@ def test_anthropic_basic_integration(monkeypatch):
 
 @pytest.mark.integration
 @pytest.mark.anthropic
-def test_anthropic_thinking_integration(monkeypatch):
+def test_anthropic_thinking_integration(monkeypatch) -> None:
     """Integration test for Anthropic with thinking mode enabled."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key or api_key == "NOT SET":
@@ -72,7 +73,7 @@ def test_anthropic_thinking_integration(monkeypatch):
     budget_val = 1024
 
     mock_stdout = io.StringIO()
-    monkeypatch.setattr(sys, 'stdout', mock_stdout)
+    monkeypatch.setattr(sys, "stdout", mock_stdout)
 
     try:
         stream = stream_anthropic(
@@ -100,7 +101,7 @@ def test_anthropic_thinking_integration(monkeypatch):
 
 @pytest.mark.integration
 @pytest.mark.openai
-def test_openai_basic_integration(monkeypatch):
+def test_openai_basic_integration(monkeypatch) -> None:
     """Integration test for basic OpenAI functionality with real API."""
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key or api_key == "NOT SET":
@@ -109,7 +110,7 @@ def test_openai_basic_integration(monkeypatch):
     model = "gpt-4o-mini"  # Using a cheaper model for tests
 
     mock_stdout = io.StringIO()
-    monkeypatch.setattr(sys, 'stdout', mock_stdout)
+    monkeypatch.setattr(sys, "stdout", mock_stdout)
 
     try:
         stream = call_openai(
@@ -133,7 +134,7 @@ def test_openai_basic_integration(monkeypatch):
 
 @pytest.mark.integration
 @pytest.mark.google
-def test_google_basic_integration(monkeypatch):
+def test_google_basic_integration(monkeypatch) -> None:
     """Integration test for basic Google Gemini functionality with real API."""
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key or api_key == "NOT SET":
@@ -142,7 +143,7 @@ def test_google_basic_integration(monkeypatch):
     model = "gemini-1.5-flash"  # Using a fast model for tests
 
     mock_stdout = io.StringIO()
-    monkeypatch.setattr(sys, 'stdout', mock_stdout)
+    monkeypatch.setattr(sys, "stdout", mock_stdout)
 
     try:
         stream = stream_google(
@@ -166,7 +167,7 @@ def test_google_basic_integration(monkeypatch):
 
 @pytest.mark.integration
 @pytest.mark.anthropic
-def test_anthropic_thinking_difference_integration(monkeypatch):
+def test_anthropic_thinking_difference_integration(monkeypatch) -> None:
     """Integration test ensuring thinking mode produces different output than non-thinking mode."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key or api_key == "NOT SET":
@@ -185,7 +186,7 @@ def test_anthropic_thinking_difference_integration(monkeypatch):
             api_key=api_key,
             model=model,
             max_tokens=budget_val + 100,
-            temperature=TEMPERATURE_THINKING_FLOAT if enabled else TEMPERATURE_NO_THINKING_FLOAT,
+            temperature=(TEMPERATURE_THINKING_FLOAT if enabled else TEMPERATURE_NO_THINKING_FLOAT),
             thinking_enabled=enabled,
             thinking_budget=budget_val,
             interleaved_thinking=enabled,
@@ -205,9 +206,7 @@ def test_anthropic_thinking_difference_integration(monkeypatch):
         assert "8" in output_without_thinking or "eight" in output_without_thinking.lower()
 
         # Outputs should be different when thinking is enabled
-        assert output_with_thinking != output_without_thinking, (
-            "Outputs should differ when thinking mode is toggled"
-        )
+        assert output_with_thinking != output_without_thinking, "Outputs should differ when thinking mode is toggled"
 
         # Thinking output should have thinking indicators
         assert "[Thinking" in output_with_thinking

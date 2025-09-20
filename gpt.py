@@ -12,6 +12,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator, Literal, Optional, Union, cast
 
+from providers.anthropic_provider import handle_anthropic_stream, stream_anthropic
+
 # Import provider modules
 from providers.common import (
     DEFAULT_THINKING_BUDGET,
@@ -19,15 +21,14 @@ from providers.common import (
     InvalidAPIKeyError,
     MissingDependencyError,
 )
+from providers.google_provider import handle_google_stream, stream_google
 from providers.openai_provider import call_openai, handle_openai_stream
-from providers.anthropic_provider import stream_anthropic, handle_anthropic_stream
-from providers.google_provider import stream_google, handle_google_stream
 
 # Third-party imports (optional)
 jsonlines: Optional[Any] = None
 
 try:
-    import jsonlines  # type: ignore
+    import jsonlines
 except ImportError:
     pass
 
@@ -48,7 +49,7 @@ CompletionStream = Union[
     "OpenAIStream[Any]",
     Iterator["AnthropicMessageStreamEvent"],
     Iterator["GenerateContentResponse"],
-    Any
+    Any,
 ]
 
 
@@ -62,7 +63,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("model", help="Model name to use for completion")
     p.add_argument("max_tokens", type=int, help="Maximum tokens to generate")
     p.add_argument("temperature", type=float, help="Temperature for sampling (0.0-2.0)")
-    p.add_argument("api_type", choices=("openai", "anthropic", "google"), help="API provider to use")
+    p.add_argument(
+        "api_type",
+        choices=("openai", "anthropic", "google"),
+        help="API provider to use",
+    )
     p.add_argument("prompt_file", help="Path to file containing the prompt")
     p.add_argument(
         "--thinking-enabled",
@@ -108,7 +113,7 @@ def print_and_collect(stream: Union["OpenAIStream[Any]", Iterator[Any]], api_typ
         out += text
 
     # Print final newline if output doesn't end with one
-    if out and not out.endswith('\n'):
+    if out and not out.endswith("\n"):
         print()
 
     return out
@@ -143,7 +148,12 @@ def main() -> None:
         stream: Union["OpenAIStream[Any]", Iterator[Any]]
         if args.api_type == "openai":
             stream = call_openai(
-                prompt, args.api_key, args.model, args.max_tokens, args.temperature, args.web_search
+                prompt,
+                args.api_key,
+                args.model,
+                args.max_tokens,
+                args.temperature,
+                args.web_search,
             )
         elif args.api_type == "anthropic":
             stream = stream_anthropic(
@@ -158,9 +168,7 @@ def main() -> None:
                 args.web_search,
             )
         else:
-            stream = stream_google(
-                prompt, args.api_key, args.model, args.max_tokens, args.temperature
-            )
+            stream = stream_google(prompt, args.api_key, args.model, args.max_tokens, args.temperature)
 
         completion = print_and_collect(stream, args.api_type)
 

@@ -4,23 +4,24 @@ Note: Unit tests use mocking to test the logic without making actual API calls.
 For integration tests with real APIs, see test_gpt_integration.py.
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
-from .anthropic_provider import stream_anthropic, handle_anthropic_stream
+import pytest
+
+from .anthropic_provider import handle_anthropic_stream, stream_anthropic
 from .common import InvalidAPIKeyError, MissingDependencyError
 
 
 class TestAnthropicProvider:
     """Test suite for Anthropic provider functionality."""
 
-    def test_missing_dependency(self):
+    def test_missing_dependency(self) -> None:
         """Test that missing anthropic package raises appropriate error."""
-        with patch('providers.anthropic_provider.anthropic', None):
+        with patch("providers.anthropic_provider.anthropic", None):
             with pytest.raises(MissingDependencyError, match="Anthropic Python package"):
                 stream_anthropic("test prompt", "test_key", "claude-3", 100, 0.5)
 
-    def test_invalid_api_key(self):
+    def test_invalid_api_key(self) -> None:
         """Test that invalid API key raises appropriate error."""
         with pytest.raises(InvalidAPIKeyError, match="Anthropic API key not set"):
             stream_anthropic("test prompt", "NOT SET", "claude-3", 100, 0.5)
@@ -28,8 +29,8 @@ class TestAnthropicProvider:
         with pytest.raises(InvalidAPIKeyError, match="Anthropic API key not set"):
             stream_anthropic("test prompt", "", "claude-3", 100, 0.5)
 
-    @patch('providers.anthropic_provider.anthropic')
-    def test_stream_anthropic_basic(self, mock_anthropic):
+    @patch("providers.anthropic_provider.anthropic")
+    def test_stream_anthropic_basic(self, mock_anthropic) -> None:
         """Test basic stream_anthropic functionality."""
         mock_client = Mock()
         mock_anthropic.Anthropic.return_value = mock_client
@@ -44,17 +45,17 @@ class TestAnthropicProvider:
         call_args = mock_client.messages.create.call_args[1]
 
         # Check messages were formatted correctly
-        messages = call_args['messages']
+        messages = call_args["messages"]
         assert len(messages) == 3
-        assert messages[0]['role'] == 'user'
-        assert messages[0]['content'] == 'Hello'
-        assert messages[1]['role'] == 'assistant'
-        assert messages[1]['content'] == 'Hi!'
-        assert messages[2]['role'] == 'user'
-        assert messages[2]['content'] == 'How are you?'
+        assert messages[0]["role"] == "user"
+        assert messages[0]["content"] == "Hello"
+        assert messages[1]["role"] == "assistant"
+        assert messages[1]["content"] == "Hi!"
+        assert messages[2]["role"] == "user"
+        assert messages[2]["content"] == "How are you?"
 
-    @patch('providers.anthropic_provider.anthropic')
-    def test_stream_anthropic_with_thinking(self, mock_anthropic):
+    @patch("providers.anthropic_provider.anthropic")
+    def test_stream_anthropic_with_thinking(self, mock_anthropic) -> None:
         """Test stream_anthropic with thinking enabled."""
         mock_client = Mock()
         mock_anthropic.Anthropic.return_value = mock_client
@@ -68,19 +69,19 @@ class TestAnthropicProvider:
             2000,
             1.0,
             thinking_enabled=True,
-            thinking_budget=1000
+            thinking_budget=1000,
         )
 
         assert result == mock_stream
         call_args = mock_client.messages.create.call_args[1]
 
         # Check thinking parameters
-        assert call_args['temperature'] == 1  # Must be 1 for thinking
-        assert 'thinking' in call_args
-        assert call_args['thinking']['type'] == 'enabled'
-        assert call_args['thinking']['budget_tokens'] == 1000
+        assert call_args["temperature"] == 1  # Must be 1 for thinking
+        assert "thinking" in call_args
+        assert call_args["thinking"]["type"] == "enabled"
+        assert call_args["thinking"]["budget_tokens"] == 1000
 
-    def test_stream_anthropic_thinking_validation(self):
+    def test_stream_anthropic_thinking_validation(self) -> None:
         """Test that thinking budget validation works."""
         # Don't patch anthropic for this test since we want to test the validation
         # that happens before any API calls
@@ -92,10 +93,10 @@ class TestAnthropicProvider:
                 100,  # max_tokens
                 1.0,
                 thinking_enabled=True,
-                thinking_budget=200  # Greater than max_tokens
+                thinking_budget=200,  # Greater than max_tokens
             )
 
-    def test_handle_anthropic_stream_text_output(self, monkeypatch):
+    def test_handle_anthropic_stream_text_output(self, monkeypatch) -> None:
         """Test handling of text output from Anthropic stream."""
         # Create mock events
         delta_mock = Mock(type="text_delta", text="Hello, world!")
@@ -106,11 +107,11 @@ class TestAnthropicProvider:
         ]
 
         result_gen = handle_anthropic_stream(iter(events))
-        result = ''.join(result_gen)
+        result = "".join(result_gen)
 
         assert result == "Hello, world!"
 
-    def test_handle_anthropic_stream_with_thinking(self, monkeypatch):
+    def test_handle_anthropic_stream_with_thinking(self, monkeypatch) -> None:
         """Test handling of thinking in Anthropic stream."""
         # Create mock events
         thinking_block = Mock(type="thinking")
@@ -126,14 +127,14 @@ class TestAnthropicProvider:
         ]
 
         result_gen = handle_anthropic_stream(iter(events))
-        output = ''.join(result_gen)
+        output = "".join(result_gen)
 
         assert "[Thinking...]" in output
         assert "Let me think..." in output
         assert "[Thinking done.]" in output
         assert "The answer is 4." in output
 
-    def test_handle_anthropic_stream_with_web_search(self, monkeypatch):
+    def test_handle_anthropic_stream_with_web_search(self, monkeypatch) -> None:
         """Test handling of web search in Anthropic stream."""
         # Create mock events
         tool_block = Mock(type="server_tool_use", name="web_search")
@@ -152,7 +153,7 @@ class TestAnthropicProvider:
         ]
 
         result_gen = handle_anthropic_stream(iter(events))
-        output = ''.join(result_gen)
+        output = "".join(result_gen)
 
         # The mock name attribute returns a Mock object, not the actual string
         # So we just check that the search was initiated and results were shown

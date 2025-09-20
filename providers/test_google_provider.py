@@ -4,23 +4,24 @@ Note: Unit tests use mocking to test the logic without making actual API calls.
 For integration tests with real APIs, see test_gpt_integration.py.
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
-from .google_provider import stream_google, handle_google_stream
-from .common import InvalidAPIKeyError, MissingDependencyError, APIError
+import pytest
+
+from .common import APIError, InvalidAPIKeyError, MissingDependencyError
+from .google_provider import handle_google_stream, stream_google
 
 
 class TestGoogleProvider:
     """Test suite for Google provider functionality."""
 
-    def test_missing_dependency(self):
+    def test_missing_dependency(self) -> None:
         """Test that missing genai package raises appropriate error."""
-        with patch('providers.google_provider.genai', None):
+        with patch("providers.google_provider.genai", None):
             with pytest.raises(MissingDependencyError, match="Google GenAI package"):
                 stream_google("test prompt", "test_key", "gemini-pro", 100, 0.5)
 
-    def test_invalid_api_key(self):
+    def test_invalid_api_key(self) -> None:
         """Test that invalid API key raises appropriate error."""
         with pytest.raises(InvalidAPIKeyError, match="Google API key not set"):
             stream_google("test prompt", "NOT SET", "gemini-pro", 100, 0.5)
@@ -28,9 +29,9 @@ class TestGoogleProvider:
         with pytest.raises(InvalidAPIKeyError, match="Google API key not set"):
             stream_google("test prompt", "", "gemini-pro", 100, 0.5)
 
-    @patch('providers.google_provider.genai')
-    @patch('providers.google_provider.genai_types')
-    def test_stream_google_with_raw_prompt(self, mock_genai_types, mock_genai):
+    @patch("providers.google_provider.genai")
+    @patch("providers.google_provider.genai_types")
+    def test_stream_google_with_raw_prompt(self, mock_genai_types, mock_genai) -> None:
         """Test stream_google with a raw string prompt."""
         mock_client = Mock()
         mock_genai.Client.return_value = mock_client
@@ -48,12 +49,12 @@ class TestGoogleProvider:
         mock_client.models.generate_content_stream.assert_called_once()
         call_args = mock_client.models.generate_content_stream.call_args[1]
 
-        assert call_args['model'] == 'gemini-pro'
-        assert len(call_args['contents']) == 1
+        assert call_args["model"] == "gemini-pro"
+        assert len(call_args["contents"]) == 1
 
-    @patch('providers.google_provider.genai')
-    @patch('providers.google_provider.genai_types')
-    def test_stream_google_with_messages(self, mock_genai_types, mock_genai):
+    @patch("providers.google_provider.genai")
+    @patch("providers.google_provider.genai_types")
+    def test_stream_google_with_messages(self, mock_genai_types, mock_genai) -> None:
         """Test stream_google with role-based messages."""
         mock_client = Mock()
         mock_genai.Client.return_value = mock_client
@@ -73,12 +74,12 @@ class TestGoogleProvider:
         call_args = mock_client.models.generate_content_stream.call_args[1]
 
         # Check that messages were parsed correctly
-        contents = call_args['contents']
+        contents = call_args["contents"]
         assert len(contents) == 3
 
-    @patch('providers.google_provider.genai')
-    @patch('providers.google_provider.genai_types')
-    def test_stream_google_max_tokens_limit(self, mock_genai_types, mock_genai):
+    @patch("providers.google_provider.genai")
+    @patch("providers.google_provider.genai_types")
+    def test_stream_google_max_tokens_limit(self, mock_genai_types, mock_genai) -> None:
         """Test that max_tokens is capped at DEFAULT_GOOGLE_MAX_TOKENS."""
         mock_client = Mock()
         mock_genai.Client.return_value = mock_client
@@ -99,10 +100,10 @@ class TestGoogleProvider:
         assert mock_config.called
         # Access the kwargs passed to GenerateContentConfig
         call_kwargs = mock_config.call_args.kwargs
-        assert call_kwargs['max_output_tokens'] == 32000  # DEFAULT_GOOGLE_MAX_TOKENS
+        assert call_kwargs["max_output_tokens"] == 32000  # DEFAULT_GOOGLE_MAX_TOKENS
 
-    @patch('providers.google_provider.genai')
-    def test_stream_google_api_errors(self, mock_genai):
+    @patch("providers.google_provider.genai")
+    def test_stream_google_api_errors(self, mock_genai) -> None:
         """Test that API errors are properly wrapped."""
         mock_client = Mock()
         mock_genai.Client.return_value = mock_client
@@ -122,7 +123,7 @@ class TestGoogleProvider:
         with pytest.raises(APIError, match="Google API timeout"):
             stream_google("Hello", "test_key", "gemini-pro", 100, 0.5)
 
-    def test_handle_google_stream(self, monkeypatch):
+    def test_handle_google_stream(self, monkeypatch) -> None:
         """Test handling of Google stream responses."""
         # Create mock chunks
         chunks = [
@@ -133,6 +134,6 @@ class TestGoogleProvider:
         ]
 
         result_gen = handle_google_stream(iter(chunks))
-        result = ''.join(result_gen)
+        result = "".join(result_gen)
 
         assert result == "Hello from Gemini!"

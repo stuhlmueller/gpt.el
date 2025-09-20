@@ -2,7 +2,7 @@
 name = "gpt-el"
 version = "2.0"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
     "anthropic>=0.52.0",
     "openai>=1.86.0",
@@ -17,3 +17,15 @@ markers = [
     "google: marks tests as relating to Google API (requires GOOGLE_API_KEY)",
     "integration: marks tests as integration tests that make real API calls",
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["__pycache__", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"

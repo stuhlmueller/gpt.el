@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/vscode-pyright/schemas/pyrightconfig.schema.json",
+  "include": ["gpt.py", "providers", "test_gpt_integration.py", "providers/test_*.py"],
+  "exclude": ["**/__pycache__", ".venv", ".ruff_cache", ".pytest_cache"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "warning",
+  "reportUnusedIgnoreComment": "warning",
+  "pythonVersion": "3.10",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.10",
+      "extraPaths": ["."]
+    }
+  ]
+}

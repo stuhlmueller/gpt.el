@@ -18,8 +18,8 @@ genai: Optional[Any] = None
 genai_types: Optional[Any] = None
 
 try:
-    import google.genai as genai  # type: ignore
-    from google.genai import types as genai_types  # type: ignore
+    import google.genai as genai
+    from google.genai import types as genai_types
 except ImportError:
     pass
 
@@ -49,18 +49,10 @@ def stream_google(
     if parsed_messages:
         contents = []
         for msg in parsed_messages:
-            factory = (
-                genai_types.UserContent
-                if msg.role in {"user", "human"}
-                else genai_types.ModelContent
-            )
-            contents.append(
-                factory(parts=[genai_types.Part.from_text(text=msg.content)])
-            )
+            factory = genai_types.UserContent if msg.role in {"user", "human"} else genai_types.ModelContent
+            contents.append(factory(parts=[genai_types.Part.from_text(text=msg.content)]))
     else:
-        contents = [
-            genai_types.UserContent(parts=[genai_types.Part.from_text(text=prompt)])
-        ]
+        contents = [genai_types.UserContent(parts=[genai_types.Part.from_text(text=prompt)])]
 
     generation_config_args: dict[str, Any] = {
         "max_output_tokens": min(DEFAULT_GOOGLE_MAX_TOKENS, max_tokens),

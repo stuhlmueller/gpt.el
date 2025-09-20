@@ -17,7 +17,7 @@ from .common import (
 openai: Optional[Any] = None
 
 try:
-    import openai  # type: ignore
+    import openai
 except ImportError:
     pass
 
@@ -161,9 +161,10 @@ def handle_openai_stream(stream: OpenAIStream[Any]) -> Iterator[str]:
             if current_tool_name == "web_search_preview" and current_tool_args_buffer:
                 try:
                     import json
+
                     args_data = json.loads(current_tool_args_buffer)
                     search_query = args_data.get("query", "N/A")
-                    yield f"\n[Searching for: \"{search_query}\"]"
+                    yield f'\n[Searching for: "{search_query}"]'
                 except json.JSONDecodeError:
                     yield f"[JSON decode error for tool args: {current_tool_args_buffer[:60]}...]"
             elif current_tool_name:
@@ -185,7 +186,11 @@ def handle_openai_stream(stream: OpenAIStream[Any]) -> Iterator[str]:
         elif event_type == "response.completed":
             pass
 
-        elif event_type in ["response.created", "response.in_progress",
-                            "response.content_part.added",
-                            "response.output_text.done", "response.content_part.done"]:
+        elif event_type in [
+            "response.created",
+            "response.in_progress",
+            "response.content_part.added",
+            "response.output_text.done",
+            "response.content_part.done",
+        ]:
             pass

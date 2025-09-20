@@ -33,9 +33,7 @@ class InvalidAPIKeyError(APIError):
     pass
 
 
-def parse_messages(
-    prompt: str, supported_roles: set[str] | None = None
-) -> list[Message]:
+def parse_messages(prompt: str, supported_roles: set[str] | None = None) -> list[Message]:
     """Parse a prompt string into a list of Message objects.
 
     Args:
@@ -49,9 +47,7 @@ def parse_messages(
         supported_roles = {"user", "assistant", "human", "model"}
 
     role_pattern = "|".join(supported_roles)
-    pattern = re.compile(
-        rf"^({role_pattern}):(.+?)(?=\n(?:{role_pattern}):|\Z)", re.S | re.M | re.I
-    )
+    pattern = re.compile(rf"^({role_pattern}):(.+?)(?=\n(?:{role_pattern}):|\Z)", re.S | re.M | re.I)
 
     messages: list[Message] = []
     for match in pattern.finditer(prompt):

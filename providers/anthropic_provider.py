@@ -17,7 +17,7 @@ from .common import (
 anthropic: Optional[Any] = None
 
 try:
-    import anthropic  # type: ignore
+    import anthropic
 except ImportError:
     pass
 
@@ -100,9 +100,7 @@ def stream_anthropic(
             "model": model,
             "messages": messages,
             "max_tokens": max_tokens,
-            "temperature": (
-                1 if thinking_enabled else temperature
-            ),
+            "temperature": (1 if thinking_enabled else temperature),
             "stream": True,
         }
 
@@ -135,7 +133,9 @@ def stream_anthropic(
         raise APIError(f"Anthropic API error: {e}") from e
 
 
-def handle_anthropic_stream(stream: Iterator["AnthropicMessageStreamEvent"]) -> Iterator[str]:
+def handle_anthropic_stream(
+    stream: Iterator["AnthropicMessageStreamEvent"],
+) -> Iterator[str]:
     """Handle Anthropic streaming responses and yield text chunks."""
     current_block_type: Optional[str] = None
     current_tool_name: Optional[str] = None
@@ -193,9 +193,10 @@ def handle_anthropic_stream(stream: Iterator["AnthropicMessageStreamEvent"]) -> 
                 if current_tool_name == "web_search" and current_tool_input_buffer:
                     try:
                         import json
+
                         query_data = json.loads(current_tool_input_buffer)
                         search_query = query_data.get("query", "N/A")
-                        yield f"\n[Searching for: \"{search_query}\"]"
+                        yield f'\n[Searching for: "{search_query}"]'
                     except json.JSONDecodeError:
                         yield f"[JSON decode error for search query: {current_tool_input_buffer[:60]}...]"
                 elif current_tool_name:

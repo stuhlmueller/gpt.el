@@ -18,8 +18,6 @@
 
 (require 'savehist)
 
-(savehist-mode 1)
-
 (defgroup gpt nil
   "Interface to instruction-following language models."
   :group 'external
@@ -73,7 +71,7 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
   '(("claude-3-7-sonnet-latest" . "64000")
     ("claude-sonnet-4-0" . "64000")
     ("claude-opus-4-0" . "32000")
-    ("claude-opus-4-1-20250805" . "32000")    
+    ("claude-opus-4-1-20250805" . "32000")
     ("claude-3-5-sonnet-latest" . "8192")
     ("claude-3-5-haiku-latest" . "8192")
     ("claude-3-opus-latest" . "4096")
@@ -201,8 +199,8 @@ have the same meaning as for `completing-read'."
          (thinking-budget (number-to-string thinking-budget-num)))
     (setq gpt-max-tokens max-tokens)
     (setq gpt-thinking-budget thinking-budget)
-    (message "Model settings updated: max_tokens=%s, thinking_budget=%s"
-             max-tokens thinking-budget)))
+    ;; Avoid noisy messages during package load; keep variables in sync silently.
+    ))
 
 ;; Initialize settings on load
 (gpt-update-model-settings)

@@ -77,7 +77,9 @@
          :buffer buffer
          :command cmd-args
          :coding 'utf-8-unix
-         :connection-type 'pipe)
+         :connection-type 'pipe
+         ;; Capture stderr into the same output buffer so users see errors inline.
+         :stderr buffer)
       (error
        (gpt-message "Failed to start process: %s" (error-message-string err))
        nil))))
