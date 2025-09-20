@@ -277,7 +277,9 @@ integrates with markdown-mode if available."
 
   (add-to-invisibility-spec 'gpt-prefix)
   ;; Use the keymap we defined earlier
-  (use-local-map gpt-mode-map))
+  (use-local-map gpt-mode-map)
+  ;; Ensure spinner slot present in mode-line (inactive by default)
+  (gpt--ensure-spinner-in-mode-line))
 
 (defun gpt-kill-process ()
   "Kill the running GPT process for the current GPT buffer, if any."
@@ -288,6 +290,7 @@ integrates with markdown-mode if available."
     (if (and proc (process-live-p proc))
         (progn
           (delete-process proc)
+          (when (fboundp 'gpt--stop-spinner) (gpt--stop-spinner))
           (message "Killed GPT process"))
       (message "No running GPT process"))))
 
@@ -326,6 +329,57 @@ integrates with markdown-mode if available."
   (setq-local font-lock-defaults '(gpt-font-lock-keywords nil t))
   (font-lock-mode 1)
   (font-lock-ensure))
+
+;; --- Mode-line spinner ---
+(defcustom gpt-mode-line-spinner-interval 0.1
+  "Interval (seconds) between spinner frame updates."
+  :type 'number
+  :group 'gpt)
+
+(defvar gpt--spinner-frames ["◐" "◓" "◑" "◒"]
+  "Unicode frames used for the GPT mode-line spinner.")
+
+(defvar-local gpt--spinner-timer nil)
+(defvar-local gpt--spinner-index 0)
+(defvar-local gpt--spinner-string "")
+(defvar-local gpt--spinner-active nil)
+
+(defun gpt--spinner-mode-line ()
+  "Return the spinner string for the mode line."
+  (if gpt--spinner-active gpt--spinner-string ""))
+
+(defun gpt--ensure-spinner-in-mode-line ()
+  "Ensure the GPT spinner appears in this buffer's mode line."
+  (let ((elt '(:eval (gpt--spinner-mode-line))))
+    (unless (member elt mode-line-format)
+      (setq-local mode-line-format (append mode-line-format (list " " elt))))))
+
+(defun gpt--start-spinner ()
+  "Start the mode-line spinner in the current GPT buffer."
+  (setq gpt--spinner-active t)
+  (setq gpt--spinner-index 0)
+  (setq gpt--spinner-string (aref gpt--spinner-frames 0))
+  (force-mode-line-update t)
+  (when (timerp gpt--spinner-timer)
+    (cancel-timer gpt--spinner-timer)
+    (setq gpt--spinner-timer nil))
+  (setq gpt--spinner-timer
+        (run-with-timer 0 gpt-mode-line-spinner-interval
+                        (lambda ()
+                          (when (and (buffer-live-p (current-buffer)) gpt--spinner-active)
+                            (setq gpt--spinner-index (mod (1+ gpt--spinner-index)
+                                                          (length gpt--spinner-frames)))
+                            (setq gpt--spinner-string (aref gpt--spinner-frames gpt--spinner-index))
+                            (force-mode-line-update t))))))
+
+(defun gpt--stop-spinner ()
+  "Stop the mode-line spinner in the current GPT buffer."
+  (when (timerp gpt--spinner-timer)
+    (cancel-timer gpt--spinner-timer)
+    (setq gpt--spinner-timer nil))
+  (setq gpt--spinner-active nil)
+  (setq gpt--spinner-string "")
+  (force-mode-line-update t))
 
 (provide 'gpt-mode)
 ;;; gpt-mode.el ends here

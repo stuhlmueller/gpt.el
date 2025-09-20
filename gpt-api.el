@@ -17,6 +17,8 @@
 ;;; Code:
 
 (require 'gpt-core)
+(declare-function gpt--start-spinner "gpt-mode" nil)
+(declare-function gpt--stop-spinner "gpt-mode" nil)
 
 (defun gpt-create-prompt-file (buffer)
   "Create a temporary file containing the prompt from BUFFER."
@@ -137,6 +139,9 @@
          (kill-buffer stderr-buf)))
      (when (eq (process-status proc) 'exit)
        (with-current-buffer (process-buffer proc)
+         ;; Stop spinner if available
+         (when (fboundp 'gpt--stop-spinner)
+           (gpt--stop-spinner))
          (save-excursion
            (goto-char (point-max))
            (unless (bolp)
@@ -171,11 +176,14 @@ Append output stream to output-buffer."
           (let ((timer (gpt-start-timer process)))
             (gpt-set-process-sentinel process timer prompt-file)
             (gpt-message "Running command...")
+            ;; Start mode-line spinner if available
+            (when (fboundp 'gpt--start-spinner)
+              (with-current-buffer buffer (gpt--start-spinner)))
             (font-lock-ensure))
         ;; Process creation failed
         (when (file-exists-p prompt-file)
           (delete-file prompt-file))
-        (gpt-message "Failed to start GPT process")))))
+          (gpt-message "Failed to start GPT process")))))
 
 (provide 'gpt-api)
 ;;; gpt-api.el ends here
