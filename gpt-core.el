@@ -49,6 +49,8 @@
   '(("GPT-4.1" . (openai . "gpt-4.1"))
     ("GPT-4.5" . (openai . "gpt-4.5-preview"))
     ("GPT-5" . (openai . "gpt-5"))
+    ("GPT-5 Mini" . (openai . "gpt-5-mini"))
+    ("GPT-5 Nano" . (openai . "gpt-5-nano"))
     ("o3" . (openai . "o3"))
     ("o3-pro" . (openai . "o3-pro"))
     ("o4-mini" . (openai . "o4-mini"))
@@ -78,6 +80,8 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
     ("gpt-4.1" . "128000")
     ("gpt-4.5-preview" . "128000")
     ("gpt-5" . "400000")
+    ("gpt-5-mini" . "200000")
+    ("gpt-5-nano" . "100000")
     ("o3" . "100000")
     ("o3-pro" . "100000")
     ("o4-mini" . "16000")
@@ -114,6 +118,17 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
 (defcustom gpt-web-search t
   "Enable web search for models that support it."
   :type 'boolean
+  :group 'gpt)
+
+;; OpenAI reasoning settings for GPT-5 family
+(defcustom gpt-openai-reasoning-effort "medium"
+  "Reasoning effort for OpenAI reasoning models (gpt-5*). One of: low, medium, high."
+  :type '(choice (const "low") (const "medium") (const "high"))
+  :group 'gpt)
+
+(defcustom gpt-openai-reasoning-summary "detailed"
+  "Reasoning summary setting for OpenAI reasoning models. Use nil to disable, or one of: auto, concise, detailed."
+  :type '(choice (const nil) (const "detailed"))
   :group 'gpt)
 
 (defvar gpt-thinking-budget "21333"

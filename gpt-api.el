@@ -41,7 +41,10 @@
             (format "GPT_TEMPERATURE=%s" gpt-temperature)
             (format "OPENAI_API_KEY=%s" gpt-openai-key)
             (format "ANTHROPIC_API_KEY=%s" gpt-anthropic-key)
-            (format "GOOGLE_API_KEY=%s" gpt-google-key))
+            (format "GOOGLE_API_KEY=%s" gpt-google-key)
+            ;; OpenAI reasoning controls (for gpt-5 family)
+            (format "GPT_OPENAI_REASONING_EFFORT=%s" gpt-openai-reasoning-effort)
+            (format "GPT_OPENAI_REASONING_SUMMARY=%s" (or gpt-openai-reasoning-summary "")))
            process-environment))
          ;; Build command arguments
          (cmd-args (list gpt-python-path gpt-script-path

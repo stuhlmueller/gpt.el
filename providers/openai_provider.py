@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any, Iterator, Optional
 
 from .common import (
@@ -91,6 +92,16 @@ def call_openai(
             "max_output_tokens": max_tokens,
         }
 
+        # Reasoning controls for GPT-5 family: default effort medium; summary opt-in (auto)
+        is_reasoning_model = model.startswith("gpt-5")
+        if is_reasoning_model:
+            effort = os.environ.get("GPT_OPENAI_REASONING_EFFORT", "medium").strip() or "medium"
+            summary = os.environ.get("GPT_OPENAI_REASONING_SUMMARY", "").strip()
+            reasoning: dict[str, Any] = {"effort": effort}
+            if summary:
+                reasoning["summary"] = summary
+            params["reasoning"] = reasoning
+
         if web_search:
             # Check if the model explicitly doesn't support web search
             if model not in WEB_SEARCH_UNSUPPORTED_MODELS:
@@ -115,7 +126,11 @@ def handle_openai_stream(stream: OpenAIStream[Any]) -> Iterator[str]:
     """Handle OpenAI Responses API streaming and yield text chunks."""
     current_tool_name: Optional[str] = None
     current_tool_args_buffer: str = ""
-    in_reasoning = False
+    # Track reasoning lifecycle precisely so we don't close early.
+    thinking_opened = False
+    reasoning_item_open_count = 0  # response.output_item.added/done with item.type=="reasoning"
+    summary_text_active = False  # response.reasoning_summary_text.delta/.done
+    summary_active = False  # response.reasoning_summary.delta/.done
 
     import collections.abc as _abc
 
@@ -125,6 +140,54 @@ def handle_openai_stream(stream: OpenAIStream[Any]) -> Iterator[str]:
 
     for event in stream:
         event_type = getattr(event, "type", None)
+
+        # Handle reasoning summary delta events
+        if event_type in (
+            "response.reasoning_summary_text.delta",
+            "response.reasoning_summary.delta",
+        ):
+            if not thinking_opened:
+                yield "\n[Thinking...]\n"
+                thinking_opened = True
+            if event_type == "response.reasoning_summary_text.delta":
+                summary_text_active = True
+            else:
+                summary_active = True
+
+            delta_obj = getattr(event, "delta", None)
+            text_out: Optional[str] = None
+            if isinstance(delta_obj, str):
+                text_out = delta_obj
+            elif delta_obj is not None:
+                for attr in ("text", "output_text"):
+                    val = getattr(delta_obj, attr, None)
+                    if isinstance(val, str) and val:
+                        text_out = val
+                        break
+            if text_out is None:
+                for attr in ("text", "output_text"):
+                    val = getattr(event, attr, None)
+                    if isinstance(val, str) and val:
+                        text_out = val
+                        break
+            if text_out:
+                yield text_out
+            continue
+
+        # Handle reasoning summary done events
+        if event_type in (
+            "response.reasoning_summary_text.done",
+            "response.reasoning_summary.done",
+        ):
+            if event_type == "response.reasoning_summary_text.done":
+                summary_text_active = False
+            else:
+                summary_active = False
+            # Defer closing until all reasoning streams are finished
+            if thinking_opened and reasoning_item_open_count == 0 and not summary_text_active and not summary_active:
+                yield "\n[Thinking done.]\n"
+                thinking_opened = False
+            continue
 
         if event_type == "response.output_text.delta":
             delta_text = getattr(event, "delta", "")
@@ -136,8 +199,10 @@ def handle_openai_stream(stream: OpenAIStream[Any]) -> Iterator[str]:
             if item:
                 item_type = getattr(item, "type", None)
                 if item_type == "reasoning":
-                    yield "\n[Thinking...]\n"
-                    in_reasoning = True
+                    if not thinking_opened:
+                        yield "\n[Thinking...]\n"
+                        thinking_opened = True
+                    reasoning_item_open_count += 1
                 elif item_type == "function_call":
                     current_tool_name = getattr(item, "name", None)
                     if current_tool_name and current_tool_name != "web_search_preview":
@@ -148,9 +213,11 @@ def handle_openai_stream(stream: OpenAIStream[Any]) -> Iterator[str]:
             item = getattr(event, "item", None)
             if item:
                 item_type = getattr(item, "type", None)
-                if item_type == "reasoning" and in_reasoning:
-                    yield "\n[Thinking done.]\n"
-                    in_reasoning = False
+                if item_type == "reasoning" and thinking_opened:
+                    reasoning_item_open_count = max(0, reasoning_item_open_count - 1)
+                    if reasoning_item_open_count == 0 and not summary_text_active and not summary_active:
+                        yield "\n[Thinking done.]\n"
+                        thinking_opened = False
 
         elif event_type == "response.function_call_arguments.delta":
             delta_args = getattr(event, "delta", "")

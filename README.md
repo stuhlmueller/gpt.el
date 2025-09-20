@@ -222,6 +222,7 @@ python3 gpt.py <api_key> <model> <max_tokens> <temperature> <api_type> <prompt_f
 - Automatic logging to JSONL format
 - Robust error handling and validation
 - Streaming output support
+- OpenAI reasoning summaries
 
 ## Troubleshooting
 

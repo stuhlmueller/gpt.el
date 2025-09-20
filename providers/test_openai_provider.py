@@ -127,6 +127,27 @@ class TestOpenAIProvider:
         assert "[Thinking done.]" in output
         assert "The answer is 42." in output
 
+    def test_handle_openai_stream_with_reasoning_summary(self, monkeypatch) -> None:
+        """Test handling of reasoning summary events in OpenAI stream (gpt-5 style)."""
+        # Create mock events for summary text
+        events = [
+            Mock(
+                type="response.reasoning_summary_text.delta",
+                delta="Summary: thinking...",
+            ),
+            Mock(type="response.reasoning_summary_text.done"),
+            Mock(type="response.output_text.delta", delta="Final answer."),
+            Mock(type="response.completed"),
+        ]
+
+        result_gen = handle_openai_stream(cast(Any, iter(events)))
+        output = "".join(result_gen)
+
+        assert "[Thinking...]" in output
+        assert "Summary: thinking..." in output
+        assert "[Thinking done.]" in output
+        assert "Final answer." in output
+
     def test_handle_openai_stream_with_web_search(self, monkeypatch) -> None:
         """Test handling of web search in OpenAI stream."""
         # Create mock events
