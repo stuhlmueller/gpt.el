@@ -137,6 +137,73 @@ Otherwise, create a temporary buffer.  Use the `gpt-mode' for the output buffer.
       (gpt-mode))
     output-buffer))
 
+(defun gpt--read-multiple-models ()
+  "Read multiple models using completing-read-multiple. Returns a list of model names."
+  (let* ((choices (mapcar #'car gpt-available-models))
+         (prompt "Choose models (comma to separate, finish with RET): "))
+    (completing-read-multiple prompt choices nil t)))
+
+(defun gpt--model-id-for-name (name)
+  "Return cons (API-TYPE . MODEL-ID) for model NAME from `gpt-available-models'."
+  (cdr (assoc name gpt-available-models)))
+
+(defun gpt--format-command-with-model (command model-id)
+  "Prefix COMMAND with [MODEL-ID] for buffer naming."
+  (format "[%s] %s" model-id command))
+
+;;;###autoload
+(defun gpt-chat-multi-models (&optional context-mode prompt-for-models)
+  "Run the same GPT command against multiple models in parallel.
+CONTEXT-MODE can be one of:
+- 'all-buffers: Use all visible buffers as context
+- 'current-buffer: Use current buffer as context
+- nil or 'none: Use no buffer context
+
+By default, uses `gpt-multi-models-default' without prompting.
+With a prefix argument (C-u), prompts to choose models interactively."
+  (interactive (let ((choice (completing-read "Context mode: "
+                                             '("all-buffers" "current-buffer" "none")
+                                             nil t)))
+                 (list (unless (string= choice "none") (intern choice))
+                       current-prefix-arg)))
+  (let* ((command (gpt-read-command context-mode t))
+         (models (if prompt-for-models
+                     (gpt--read-multiple-models)
+                   gpt-multi-models-default)))
+    (when (string-empty-p (string-trim command))
+      (user-error "Command cannot be empty"))
+    (when (null models)
+      (user-error "No models selected"))
+    ;; Add to history once
+    (unless (string-empty-p command)
+      (add-to-list 'gpt-command-history command))
+    (let* ((input (gpt-get-context context-mode))
+           (first t))
+      (dolist (model-name models)
+        (let* ((info (gpt--model-id-for-name model-name)))
+          (unless info
+            (user-error "Unknown model: %s" model-name))
+          (let* ((api-type (car info))
+                 (model-id (cdr info))
+                 ;; Dynamically bind per-run model and settings
+                 (gpt-api-type api-type)
+                 (gpt-model model-id))
+            ;; Update derived settings for this model
+            (gpt-update-model-settings)
+            (let* ((bufname (gpt--format-command-with-model command model-id))
+                   (output-buffer (gpt-create-output-buffer bufname)))
+              (if first
+                  (progn
+                    (setq first nil)
+                    (switch-to-buffer-other-window output-buffer))
+                (display-buffer output-buffer))
+              (when (not (string-empty-p input))
+                (with-current-buffer output-buffer
+                  (insert (format "User:\n\n%s\n\n" input))))
+              (with-current-buffer output-buffer
+                (gpt-insert-command command)
+                (gpt-run-buffer output-buffer)))))))))
+
 (defun gpt-insert-command (command)
   "Insert COMMAND to GPT in chat format into the current buffer."
   (let ((template "User: %s\n\nAssistant: "))

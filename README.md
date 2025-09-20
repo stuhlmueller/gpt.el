@@ -163,6 +163,7 @@ To switch API providers:
 ### Main Commands
 
 - `gpt-chat` - Interactive prompt to choose context mode and enter command
+- `gpt-chat-multi-models` - Run the same command against multiple models (parallel buffers). Uses defaults from `gpt-multi-models-default` (GPT-5 and Claude 4.1 Opus). Use `C-u` to pick models interactively.
 - `gpt-chat-all-buffers` - Use all visible buffers as context
 - `gpt-chat-current-buffer` - Use only the current buffer as context
 - `gpt-chat-no-context` - Use no buffer context
@@ -197,6 +198,7 @@ Thinking mode commands:
 - `C-c C-j i` - Toggle interleaved thinking mode
 - `C-c C-j w` - Toggle web search
 - `C-c C-j s` - Show current thinking mode status
+- `C-c C-j m` - Run the same command across multiple models (uses defaults; `C-u` to pick)
 
 ### Context Modes
 

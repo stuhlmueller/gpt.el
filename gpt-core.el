@@ -68,6 +68,14 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
                                   string))
   :group 'gpt)
 
+;; Default models for multi-model command
+(defcustom gpt-multi-models-default '("GPT-5" "Claude 4.1 Opus")
+  "Default list of model names (from `gpt-available-models') used by `gpt-chat-multi-models'.
+Users can customize this list. Use a prefix argument (C-u) with
+`gpt-chat-multi-models' to choose models interactively instead."
+  :type '(repeat (string :tag "Model name (display label)"))
+  :group 'gpt)
+
   ;; Model-specific max tokens
 (defcustom gpt-model-max-tokens
   '(("claude-3-7-sonnet-latest" . "64000")

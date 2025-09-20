@@ -258,6 +258,7 @@ then specific delimiter lines override the content face.")
     (define-key map (kbd "C-c C-j i") 'gpt-toggle-interleaved-thinking)
     (define-key map (kbd "C-c C-j w") 'gpt-toggle-web-search)
     (define-key map (kbd "C-c C-j s") 'gpt-thinking-status)
+    (define-key map (kbd "C-c C-j m") 'gpt-chat-multi-models)
     map)
   "Keymap for GPT mode.")
 
