@@ -252,6 +252,7 @@ then specific delimiter lines override the content face.")
     (define-key map (kbd "C-c C-q") 'gpt-close-current)
     (define-key map (kbd "C-c C-x") 'gpt-close-all)
     (define-key map (kbd "C-c C-r") 'gpt-regenerate-response)
+    (define-key map (kbd "C-c C-k") 'gpt-kill-process)
     ;; Thinking mode commands - using non-reserved sequences
     (define-key map (kbd "C-c C-j t") 'gpt-toggle-thinking)
     (define-key map (kbd "C-c C-j i") 'gpt-toggle-interleaved-thinking)
@@ -277,6 +278,18 @@ integrates with markdown-mode if available."
   (add-to-invisibility-spec 'gpt-prefix)
   ;; Use the keymap we defined earlier
   (use-local-map gpt-mode-map))
+
+(defun gpt-kill-process ()
+  "Kill the running GPT process for the current GPT buffer, if any."
+  (interactive)
+  (unless (eq major-mode 'gpt-mode)
+    (user-error "Not in a gpt output buffer"))
+  (let ((proc (get-buffer-process (current-buffer))))
+    (if (and proc (process-live-p proc))
+        (progn
+          (delete-process proc)
+          (message "Killed GPT process"))
+      (message "No running GPT process"))))
 
 (declare-function markdown-mode "markdown-mode" nil)
 

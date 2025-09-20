@@ -155,6 +155,14 @@
   "Run GPT command with BUFFER text as input.
 Append output stream to output-buffer."
   (with-current-buffer buffer
+    ;; If a process is already running for this buffer, prompt to stop it first.
+    (let ((existing (get-buffer-process (current-buffer))))
+      (when (and existing (process-live-p existing))
+        (if (y-or-n-p "A GPT process is running here. Kill it and start a new one? ")
+            (progn (delete-process existing)
+                   ;; Give Emacs a tick to run process sentinel cleanup
+                   (sit-for 0.05))
+          (user-error "Aborted. Existing GPT process is still running."))))
     (goto-char (point-max))
     (font-lock-ensure)
     (let* ((prompt-file (gpt-create-prompt-file buffer))

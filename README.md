@@ -186,6 +186,7 @@ When in a GPT output buffer (`gpt-mode`), these keys are available:
 - `C-c C-b` - Copy code block at point to clipboard
 - `C-c C-m` - Switch between models interactively
 - `C-c C-t` - Generate a title for the current buffer
+- `C-c C-k` - Kill the running GPT process in this buffer
 - `C-c C-q` - Close current GPT buffer
 - `C-c C-x` - Close all GPT buffers
 - `C-c C-r` - Regenerate the last assistant response
