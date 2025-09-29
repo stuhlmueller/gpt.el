@@ -30,7 +30,7 @@
                  (const :tag "Google" google))
   :group 'gpt)
 
-(defcustom gpt-model "claude-opus-4-0"
+(defcustom gpt-model "claude-sonnet-4-5"
   "The model to use (e.g., \\='gpt-4.1\\=', \\='claude-sonnet-4-0\\=')."
   :type 'string
   :group 'gpt)
@@ -56,8 +56,9 @@
     ("o4-mini" . (openai . "o4-mini"))
     ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
     ("Claude 4 Sonnet" . (anthropic . "claude-sonnet-4-0"))
+    ("Claude 4.5 Sonnet" . (anthropic . "claude-sonnet-4-5"))
     ("Claude 4.1 Opus" . (anthropic . "claude-opus-4-1-20250805"))
-    ("Gemini 2.5 Pro Preview" . (google . "gemini-2.5-pro-preview-06-05")))
+    ("Gemini 2.5 Pro" . (google . "gemini-2.5-pro")))
   "Available models for GPT commands.
 Each entry is a cons cell where the car is the display name and
 the cdr is a cons cell of (API-TYPE . MODEL-ID)."
@@ -69,7 +70,7 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
   :group 'gpt)
 
 ;; Default models for multi-model command
-(defcustom gpt-multi-models-default '("GPT-5" "Claude 4.1 Opus")
+(defcustom gpt-multi-models-default '("GPT-5" "Claude 4.5 Sonnet" "Gemini 2.5 Pro")
   "Default list of model names (from `gpt-available-models') used by `gpt-chat-multi-models'.
 Users can customize this list. Use a prefix argument (C-u) with
 `gpt-chat-multi-models' to choose models interactively instead."
@@ -80,6 +81,7 @@ Users can customize this list. Use a prefix argument (C-u) with
 (defcustom gpt-model-max-tokens
   '(("claude-3-7-sonnet-latest" . "64000")
     ("claude-sonnet-4-0" . "64000")
+    ("claude-sonnet-4-5" . "64000")
     ("claude-opus-4-0" . "32000")
     ("claude-opus-4-1-20250805" . "32000")
     ("claude-3-5-sonnet-latest" . "8192")

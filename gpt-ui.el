@@ -196,7 +196,8 @@ With a prefix argument (C-u), prompts to choose models interactively."
                   (progn
                     (setq first nil)
                     (switch-to-buffer-other-window output-buffer))
-                (display-buffer output-buffer))
+                ;; Ensure each additional model gets its own window
+                (display-buffer output-buffer '(display-buffer-pop-up-window)))
               (when (not (string-empty-p input))
                 (with-current-buffer output-buffer
                   (insert (format "User:\n\n%s\n\n" input))))
