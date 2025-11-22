@@ -166,6 +166,8 @@ To switch API providers:
 - `gpt-chat-multi-models` - Run the same command against multiple models (parallel buffers). Uses defaults from `gpt-multi-models-default` (GPT-5 and Claude 4.1 Opus). Use `C-u` to pick models interactively.
 - `gpt-chat-all-buffers` - Use all visible buffers as context
 - `gpt-chat-current-buffer` - Use only the current buffer as context
+- `gpt-edit-current-buffer` - Rewrite the current buffer with GPT, review the diff, and accept or reject the changes
+- After generating a diff, `gpt-edit-current-buffer` also lets you supply additional feedback to iterate until the result looks right.
 - `gpt-chat-no-context` - Use no buffer context
 
 ### Key Bindings
@@ -176,6 +178,7 @@ You can bind these functions to keys of your choice:
 (global-set-key (kbd "M-C-g") 'gpt-chat)
 (global-set-key (kbd "M-C-b") 'gpt-chat-all-buffers)
 (global-set-key (kbd "M-C-c") 'gpt-chat-current-buffer)
+(global-set-key (kbd "M-C-e") 'gpt-edit-current-buffer)
 ```
 
 ### GPT Mode Key Bindings
@@ -205,6 +208,10 @@ Thinking mode commands:
 - **all-buffers**: Uses all visible buffers as context, with cursor position marked
 - **current-buffer**: Uses only the current buffer as context, with cursor position marked
 - **none**: Uses no buffer context
+
+## Development
+
+Run `make check` to validate parentheses, load each file, byte-compile, and lint the Elisp sources. Use `make help` to see all available maintenance targets.
 
 ## Backend (gpt.py)
 

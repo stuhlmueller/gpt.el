@@ -108,7 +108,14 @@ def stream_anthropic(
             kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
 
         headers: dict[str, str] = {}
-        if interleaved_thinking:
+
+        # Enable large context window for Sonnet 4.5
+        if model == "claude-sonnet-4-5":
+            headers["anthropic-beta"] = "context-1m-2025-08-07"
+
+        # Note: interleaved-thinking and context-1m betas are mutually exclusive
+        # If both are needed, only the first one set will be used
+        if interleaved_thinking and "anthropic-beta" not in headers:
             headers["anthropic-beta"] = "interleaved-thinking-2025-05-14"
 
         if headers:

@@ -1,4 +1,4 @@
-;;; gpt-core.el --- Core functionality for gpt.el -*- lexical-binding: t; -*-
+;;; gpt-core.el --- Core functionality for gpt.el -*- lexical-binding: t; package-lint-main-file: "gpt.el"; -*-
 
 ;; Copyright (C) 2022 Andreas Stuhlmueller
 
@@ -8,7 +8,6 @@
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
-;; Package-Requires: ((emacs "25.1"))
 
 ;;; Commentary:
 
@@ -46,19 +45,11 @@
   :group 'gpt)
 
 (defcustom gpt-available-models
-  '(("GPT-4.1" . (openai . "gpt-4.1"))
-    ("GPT-4.5" . (openai . "gpt-4.5-preview"))
-    ("GPT-5" . (openai . "gpt-5"))
+  '(("GPT-5.1" . (openai . "gpt-5.1"))
     ("GPT-5 Mini" . (openai . "gpt-5-mini"))
     ("GPT-5 Nano" . (openai . "gpt-5-nano"))
-    ("o3" . (openai . "o3"))
-    ("o3-pro" . (openai . "o3-pro"))
-    ("o4-mini" . (openai . "o4-mini"))
-    ("Claude 3.7 Sonnet" . (anthropic . "claude-3-7-sonnet-latest"))
-    ("Claude 4 Sonnet" . (anthropic . "claude-sonnet-4-0"))
     ("Claude 4.5 Sonnet" . (anthropic . "claude-sonnet-4-5"))
-    ("Claude 4.1 Opus" . (anthropic . "claude-opus-4-1-20250805"))
-    ("Gemini 2.5 Pro" . (google . "gemini-2.5-pro")))
+    ("Gemini 3 Pro (Preview)" . (google . "gemini-3-pro-preview")))
   "Available models for GPT commands.
 Each entry is a cons cell where the car is the display name and
 the cdr is a cons cell of (API-TYPE . MODEL-ID)."
@@ -70,32 +61,19 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
   :group 'gpt)
 
 ;; Default models for multi-model command
-(defcustom gpt-multi-models-default '("GPT-5" "Claude 4.5 Sonnet" "Gemini 2.5 Pro")
-  "Default list of model names (from `gpt-available-models') used by `gpt-chat-multi-models'.
-Users can customize this list. Use a prefix argument (C-u) with
-`gpt-chat-multi-models' to choose models interactively instead."
+(defcustom gpt-multi-models-default '("GPT-5.1" "Claude 4.5 Sonnet" "Gemini 3 Pro (Preview)")
+  "Models used by `gpt-chat-multi-models'.
+Use a prefix argument (C-u) to pick models interactively."
   :type '(repeat (string :tag "Model name (display label)"))
   :group 'gpt)
 
   ;; Model-specific max tokens
 (defcustom gpt-model-max-tokens
-  '(("claude-3-7-sonnet-latest" . "64000")
-    ("claude-sonnet-4-0" . "64000")
-    ("claude-sonnet-4-5" . "64000")
-    ("claude-opus-4-0" . "32000")
-    ("claude-opus-4-1-20250805" . "32000")
-    ("claude-3-5-sonnet-latest" . "8192")
-    ("claude-3-5-haiku-latest" . "8192")
-    ("claude-3-opus-latest" . "4096")
-    ("gpt-4.1" . "128000")
-    ("gpt-4.5-preview" . "128000")
-    ("gpt-5" . "400000")
+  '(("claude-sonnet-4-5" . "64000")
+    ("gpt-5.1" . "400000")
     ("gpt-5-mini" . "200000")
     ("gpt-5-nano" . "100000")
-    ("o3" . "100000")
-    ("o3-pro" . "100000")
-    ("o4-mini" . "16000")
-    ("gemini-2.5-pro-preview-06-05" . "8192"))
+    ("gemini-3-pro-preview" . "60000"))
   "Maximum output tokens for each model."
   :type '(alist :key-type string :value-type string)
   :group 'gpt)
@@ -132,12 +110,13 @@ Users can customize this list. Use a prefix argument (C-u) with
 
 ;; OpenAI reasoning settings for GPT-5 family
 (defcustom gpt-openai-reasoning-effort "medium"
-  "Reasoning effort for OpenAI reasoning models (gpt-5*). One of: low, medium, high."
+  "Reasoning effort for OpenAI GPT-5 family models: low, medium, or high."
   :type '(choice (const "low") (const "medium") (const "high"))
   :group 'gpt)
 
 (defcustom gpt-openai-reasoning-summary "detailed"
-  "Reasoning summary setting for OpenAI reasoning models. Use nil to disable, or one of: auto, concise, detailed."
+  "Reasoning summary for OpenAI GPT-5 family models.
+Use nil, auto, concise, or detailed."
   :type '(choice (const nil) (const "detailed"))
   :group 'gpt)
 

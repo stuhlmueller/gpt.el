@@ -1,4 +1,4 @@
-;;; gpt-ui.el --- UI functionality for gpt.el -*- lexical-binding: t; -*-
+;;; gpt-ui.el --- UI functionality for gpt.el -*- lexical-binding: t; package-lint-main-file: "gpt.el"; -*-
 
 ;; Copyright (C) 2022 Andreas Stuhlmueller
 
@@ -8,7 +8,6 @@
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
-;; Package-Requires: ((emacs "25.1"))
 
 ;;; Commentary:
 
@@ -18,6 +17,9 @@
 
 (require 'gpt-core)
 (require 'gpt-api)
+(require 'cl-lib)
+(require 'subr-x)
+(require 'diff)
 
 (declare-function gpt-mode "gpt-mode" nil)
 
@@ -76,6 +78,256 @@ If INCLUDE-METADATA is non-nil, prepend a header with buffer name and file path.
                   after)
         (concat before "<cursor/>" after)))))
 
+(defun gpt--mode-language (mode)
+  "Derive LANGUAGE string for MODE suitable for markdown fences."
+  (let ((name (string-remove-suffix "-mode" (symbol-name mode))))
+    (if (string-empty-p name) "text" name)))
+
+(defun gpt--extract-code-block (text)
+  "Extract and return first fenced code block body from TEXT.
+If no code fence is found, return TEXT trimmed."
+  (if (string-match "```[^\n]*\n\\([\\s\\S]*?\\)```" text)
+      (match-string 1 text)
+    (string-trim text)))
+
+(defun gpt--remove-thinking-blocks (text)
+  "Strip [Thinking...] sections and related markers from TEXT."
+  (let ((case-fold-search nil)
+        (pattern "\\[Thinking\\.\\.\\.\\]\\(?:.\\|\n\\)*?\\[Thinking done\\.\\]"))
+    (while (string-match pattern text)
+      (setq text (concat (substring text 0 (match-beginning 0))
+                         (substring text (match-end 0)))))
+    (setq text (replace-regexp-in-string "^\\[Thinking[^]]*\\]\\s-*" "" text))
+    (setq text (replace-regexp-in-string "\\s-*\\[Thinking done\\.\\]\\s-*" "" text))
+    text))
+
+(defun gpt--sanitize-utf8 (text)
+  "Remove characters from TEXT that cannot be safely encoded as UTF-8."
+  (apply #'string
+         (cl-loop for ch across text
+                  unless (or (< ch 0)
+                             (>= ch #x110000)
+                             (and (>= ch #xD800) (<= ch #xDFFF)))
+                  collect ch)))
+
+(defun gpt--clean-edit-output (text)
+  "Normalize GPT edit output TEXT by removing meta markers."
+  (let* ((without-thinking (gpt--remove-thinking-blocks text))
+         (stripped (string-trim without-thinking)))
+    (setq stripped (replace-regexp-in-string "^Assistant:\\s-*" "" stripped))
+    (gpt--sanitize-utf8 stripped)))
+
+(defun gpt--strip-code-fences (text)
+  "Remove leading and trailing Markdown code fences from TEXT."
+  (let ((clean text))
+    (when (string-match "\\`[ \t]*```[^\n]*\n" clean)
+      (setq clean (substring clean (match-end 0))))
+    (cond
+     ((string-match "\n```[^\n]*[ \t]*\\'" clean)
+      (setq clean (substring clean 0 (match-beginning 0))))
+     ((string-match "```[^\n]*[ \t]*\\'" clean)
+      (setq clean (substring clean 0 (match-beginning 0)))))
+    clean))
+
+(defun gpt--finalize-edit (source-buffer prompt-buffer original-window original-text initial-size base-command history window-config)
+  "Finalize GPT edit and optionally continue with feedback.
+SOURCE-BUFFER is the buffer being edited.
+PROMPT-BUFFER contains GPT conversation.
+ORIGINAL-WINDOW is the window to restore.
+ORIGINAL-TEXT is the pre-edit buffer contents.
+INITIAL-SIZE marks where GPT output begins.
+BASE-COMMAND is the initial instruction.
+HISTORY is a list of feedback strings from previous iterations.
+WINDOW-CONFIG is the window configuration to restore after editing."
+  (when (window-live-p original-window)
+    (select-window original-window))
+  (unless (buffer-live-p source-buffer)
+    (message "GPT edit aborted: source buffer no longer exists.")
+    (cl-return-from gpt--finalize-edit))
+  (unless (buffer-live-p prompt-buffer)
+    (message "GPT edit aborted: prompt buffer was killed.")
+    (cl-return-from gpt--finalize-edit))
+  (let ((raw-output (with-current-buffer prompt-buffer
+                      (buffer-substring-no-properties initial-size (point-max)))))
+    (setq raw-output (gpt--clean-edit-output raw-output))
+    (message "GPT edit: proposal captured from %s (%d chars)."
+             (buffer-name prompt-buffer)
+             (length raw-output))
+    (when (string-empty-p (string-trim raw-output))
+      (message "GPT edit returned no content.")
+      (cl-return-from gpt--finalize-edit))
+    (let* ((extracted (gpt--extract-code-block raw-output))
+           (new-content (string-trim (gpt--strip-code-fences extracted)))
+           (reran nil))
+      ;; Preserve trailing newline if original had one and new content does not.
+      (when (and (string-suffix-p "\n" original-text)
+                 (not (string-suffix-p "\n" new-content)))
+        (setq new-content (concat new-content "\n")))
+      (if (string= original-text new-content)
+          (progn
+            (message "GPT produced no changes.")
+            (when (buffer-live-p prompt-buffer)
+              (kill-buffer prompt-buffer))
+            (when window-config
+              (set-window-configuration window-config)))
+        (let* ((temp-original (make-temp-file "gpt-edit-original-"))
+               (temp-new (make-temp-file "gpt-edit-new-"))
+               (diff-program (or (executable-find "diff")
+                                 (user-error "GPT edit requires the external `diff` program, but it was not found in PATH")))
+               (diff-buffer (get-buffer-create "*gpt-edit-diff*"))
+               diff-exit)
+          (unwind-protect
+              (progn
+                (with-temp-file temp-original
+                  (insert original-text))
+                (with-temp-file temp-new
+                  (insert new-content))
+                (condition-case err
+                    (with-current-buffer diff-buffer
+                      (let ((inhibit-read-only t))
+                        (erase-buffer)
+                        (setq diff-exit
+                              (call-process diff-program nil (current-buffer) nil "-u" temp-original temp-new))
+                        (unless (memq diff-exit '(0 1))
+                          (error "diff exited with status %s" diff-exit))
+                        (when (= diff-exit 1)
+                          (diff-mode)
+                          (goto-char (point-min)))))
+                  (error
+                   (message "GPT edit failed while diffing: %s" (error-message-string err))
+                   (signal (car err) (cdr err))))
+                (if (zerop diff-exit)
+                    (progn
+                      (when (buffer-live-p diff-buffer)
+                        (kill-buffer diff-buffer))
+                      (when window-config
+                        (set-window-configuration window-config))
+                      (message "GPT edit: diff produced no changes."))
+                  (display-buffer diff-buffer)
+                  (message "GPT edit: review diff and confirm.")
+                  (let ((choice (read-char-choice
+                                 "Apply GPT edits, give feedback, or abort (y=yes, f=feedback, n=no)? "
+                                 '(?y ?Y ?n ?N ?f ?F))))
+                    (when (buffer-live-p diff-buffer)
+                      (kill-buffer diff-buffer))
+                    (pcase choice
+                      ((or ?y ?Y)
+                       (when (buffer-live-p prompt-buffer)
+                         (kill-buffer prompt-buffer))
+                       (with-current-buffer source-buffer
+                         (let ((inhibit-read-only t)
+                               (original-point (point)))
+                           (erase-buffer)
+                           (insert new-content)
+                           (goto-char (min original-point (point-max)))))
+                       (when window-config
+                         (set-window-configuration window-config))
+                       (message "Applied GPT edit."))
+                      ((or ?n ?N)
+                       (when (buffer-live-p prompt-buffer)
+                         (kill-buffer prompt-buffer))
+                       (when window-config
+                         (set-window-configuration window-config))
+                       (message "Edit rejected."))
+                      (_
+                       (let* ((feedback (string-trim (read-string "Additional feedback (empty to retry): "))))
+                         (setq reran t)
+                         (when (buffer-live-p prompt-buffer)
+                           (kill-buffer prompt-buffer))
+                         (let ((updated-history (if (string-empty-p feedback)
+                                                     history
+                                                   (cons feedback history))))
+                           (message "GPT edit: re-running with feedback...")
+                           (gpt-edit--run source-buffer original-text base-command updated-history window-config))))))))
+            (delete-file temp-original)
+            (delete-file temp-new)))
+        (unless reran
+          (when (buffer-live-p prompt-buffer)
+            (kill-buffer prompt-buffer)))))))
+
+(defun gpt--build-edit-command (base-command history)
+  "Combine BASE-COMMAND with HISTORY of feedback for a new instruction."
+  (let ((chunks (list base-command)))
+    (when history
+      (setq chunks
+            (append chunks
+                    (list (concat "Follow-up feedback to incorporate:\n"
+                                  (mapconcat (lambda (fb) (concat "- " fb))
+                                             (reverse history) "\n"))))))
+    (string-join chunks "\n\n")))
+
+(defun gpt-edit--run (source-buffer original-text base-command history &optional window-config)
+  "Execute GPT edit iteration for SOURCE-BUFFER.
+ORIGINAL-TEXT is the baseline content.
+BASE-COMMAND is the initial instruction string.
+HISTORY is a list of feedback strings applied so far.
+WINDOW-CONFIG is the window configuration to restore after editing (optional)."
+  (let* ((effective-command (gpt--build-edit-command base-command history))
+         (buffer-title (buffer-name source-buffer))
+         (language (with-current-buffer source-buffer (gpt--mode-language major-mode)))
+         (file-path (with-current-buffer source-buffer (or (buffer-file-name) "N/A")))
+         (selection (with-current-buffer source-buffer
+                      (when (use-region-p)
+                        (buffer-substring-no-properties (region-beginning) (region-end)))))
+         (selection-block
+          (when (and selection (not (string-empty-p (string-trim selection))))
+            (concat "\nSelected region (for reference only):\n<selection>\n"
+                    selection
+                    "\n</selection>\n")))
+         (prompt (concat
+                  "User:\n\n"
+                  (format
+                   "You are editing the Emacs buffer \"%s\" (File: %s).\n"
+                   buffer-title file-path)
+                  "Rewrite the entire buffer exactly once so it satisfies the instruction while leaving unrelated content unchanged.\n"
+                  (format
+                   "Return only the complete updated buffer enclosed in a ```%s``` fenced code block with no commentary outside the fence.\n\n"
+                   language)
+                  "<instruction>\n"
+                  effective-command
+                  "\n</instruction>\n"
+                  (or selection-block "")
+                  "\n<buffer>\n"
+                  original-text
+                  "\n</buffer>\n"))
+         (prompt-buffer (gpt-create-output-buffer (format "Edit %s" buffer-title)))
+         (original-window (selected-window)))
+    (with-current-buffer prompt-buffer
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert prompt)))
+    (let ((initial-size (with-current-buffer prompt-buffer (point-max))))
+      (switch-to-buffer-other-window prompt-buffer)
+      (message "GPT edit: generating proposal...")
+      (gpt-run-buffer prompt-buffer)
+      (let ((proc (get-buffer-process prompt-buffer)))
+        (unless proc
+          (user-error "Failed to start GPT process"))
+        (let ((original-sentinel (process-sentinel proc))
+              (finalized nil))
+          (set-process-sentinel
+           proc
+           (lambda (process event)
+             (funcall original-sentinel process event)
+             (when (and (not finalized)
+                        (memq (process-status process) '(exit signal)))
+               (setq finalized t)
+               (run-at-time
+                0 nil
+                (lambda ()
+                  (let ((status (process-status process))
+                        (exit-code (process-exit-status process)))
+                    (if (and (eq status 'exit) (zerop exit-code))
+                        (gpt--finalize-edit source-buffer prompt-buffer original-window original-text initial-size base-command history window-config)
+                      (when (window-live-p original-window)
+                        (select-window original-window))
+                      (when window-config
+                        (set-window-configuration window-config))
+                      (message "GPT edit process exited abnormally (%s, code %s)."
+                               (if (eq status 'signal) "signal" "exit")
+                               exit-code))))))))
+          (message "GPT edit running… diff will appear when ready."))))))
+
 (defun gpt-get-context (context-mode)
   "Return text context based on CONTEXT-MODE.
 Always insert <cursor/> in the current buffer.
@@ -84,7 +336,6 @@ Possible CONTEXT-MODE values:
 - \='current-buffer: only the current buffer, with a <cursor/>
 - nil: no buffer context
 If there is an active region, append as \"Selected region:\"."
-  (require 'subr-x)
   (let* ((has-region (use-region-p))
          (region-text (when has-region
                         (buffer-substring-no-properties (region-beginning) (region-end))))
@@ -138,7 +389,7 @@ Otherwise, create a temporary buffer.  Use the `gpt-mode' for the output buffer.
     output-buffer))
 
 (defun gpt--read-multiple-models ()
-  "Read multiple models using completing-read-multiple. Returns a list of model names."
+  "Return a list of model names selected via `completing-read-multiple'."
   (let* ((choices (mapcar #'car gpt-available-models))
          (prompt "Choose models (comma to separate, finish with RET): "))
     (completing-read-multiple prompt choices nil t)))
@@ -153,11 +404,11 @@ Otherwise, create a temporary buffer.  Use the `gpt-mode' for the output buffer.
 
 ;;;###autoload
 (defun gpt-chat-multi-models (&optional context-mode prompt-for-models)
-  "Run the same GPT command against multiple models in parallel.
+  "Run GPT command against multiple models in parallel.
 CONTEXT-MODE can be one of:
-- 'all-buffers: Use all visible buffers as context
-- 'current-buffer: Use current buffer as context
-- nil or 'none: Use no buffer context
+- \\='all-buffers: Use all visible buffers as context
+- \\='current-buffer: Use current buffer as context
+- nil or \\='none: Use no buffer context
 
 By default, uses `gpt-multi-models-default' without prompting.
 With a prefix argument (C-u), prompts to choose models interactively."
@@ -209,6 +460,20 @@ With a prefix argument (C-u), prompts to choose models interactively."
   "Insert COMMAND to GPT in chat format into the current buffer."
   (let ((template "User: %s\n\nAssistant: "))
     (insert (format template command))))
+
+;;;###autoload
+(defun gpt-edit-current-buffer ()
+  "Rewrite the current buffer via GPT and apply changes after review."
+  (interactive)
+  (let* ((raw-command (gpt-read-command 'current-buffer t))
+         (command (string-trim raw-command)))
+    (when (string-empty-p command)
+      (user-error "Command cannot be empty"))
+    (add-to-list 'gpt-command-history raw-command)
+    (let ((source-buffer (current-buffer))
+          (original-text (buffer-substring-no-properties (point-min) (point-max)))
+          (window-config (current-window-configuration)))
+      (gpt-edit--run source-buffer original-text command '() window-config))))
 
 ;;;###autoload
 (defun gpt-chat (&optional context-mode)

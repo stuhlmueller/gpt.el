@@ -1,4 +1,4 @@
-;;; gpt-api.el --- API functionality for gpt.el -*- lexical-binding: t; -*-
+;;; gpt-api.el --- API functionality for gpt.el -*- lexical-binding: t; package-lint-main-file: "gpt.el"; -*-
 
 ;; Copyright (C) 2022 Andreas Stuhlmueller
 
@@ -8,7 +8,6 @@
 ;; URL: https://github.com/stuhlmueller/gpt.el
 ;; License: MIT
 ;; SPDX-License-Identifier: MIT
-;; Package-Requires: ((emacs "25.1"))
 
 ;;; Commentary:
 
@@ -118,11 +117,16 @@
 
 (defun gpt-start-timer (process)
   "Start a timer to check if PROCESS is still running."
-  (run-with-timer
-   0.1 0.1
-   (lambda ()
-     (unless (process-live-p process)
-       (gpt-message "Command completed.")))))
+  (let (timer)
+    (setq timer
+          (run-with-timer
+           0.1 0.1
+           (lambda ()
+             (unless (process-live-p process)
+               (when timer
+                 (cancel-timer timer))
+               (gpt-message "Command completed.")))))
+    timer))
 
 (defun gpt-set-process-sentinel (process timer prompt-file)
   "Set up process sentinel for PROCESS with TIMER and PROMPT-FILE."

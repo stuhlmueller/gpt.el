@@ -6,3 +6,4 @@ repomix*
 .mypy*
 *.elc
 *.cpython*
+.emacs-packages/

@@ -262,11 +262,15 @@ then specific delimiter lines override the content face.")
     map)
   "Keymap for GPT mode.")
 
+(defun gpt--enable-word-wrap ()
+  "Ensure GPT buffers wrap long lines by default."
+  (setq-local truncate-lines nil)
+  (setq-local word-wrap t))
+
 (define-derived-mode gpt-mode text-mode "GPT"
   "A mode for displaying the output of GPT commands.
 This mode provides syntax highlighting for GPT conversations and
 integrates with markdown-mode if available."
-  (setq-local word-wrap t)
   (setq-local font-lock-multiline t)
   (setq-local font-lock-extra-managed-props '(invisible))
 
@@ -276,6 +280,7 @@ integrates with markdown-mode if available."
       (gpt--setup-markdown-features)
     (gpt--setup-basic-features))
 
+  (gpt--enable-word-wrap)
   (add-to-invisibility-spec 'gpt-prefix)
   ;; Use the keymap we defined earlier
   (use-local-map gpt-mode-map)
