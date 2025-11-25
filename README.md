@@ -4,7 +4,7 @@
   <img src="gpt.gif" alt="gpt.el demo" width="600"/>
 </p>
 
-gpt.el is an Emacs package that lets you interact with instruction-following language models like GPT-4.5, o3, Claude 4.5 Opus, Claude 4.5 Sonnet, and Gemini 2.5 Pro from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
+gpt.el is an Emacs package that lets you interact with instruction-following language models like GPT-5.1, Claude 4.5 Opus, Claude 4.5 Sonnet, and Gemini 3 Pro from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
 
 ## Features
 
@@ -14,8 +14,9 @@ gpt.el is an Emacs package that lets you interact with instruction-following lan
 - **Interactive conversations**: Follow-up commands with conversation history
 - **Command history**: Browse, save, and clear your command history
 - **Flexible context modes**: All buffers, current buffer, or no context
+- **Multi-model comparison**: Run the same prompt against multiple models in parallel
 - **Extended thinking mode**: Enhanced reasoning for Anthropic models with streaming thought process
-- **Web search**: Real-time web search capability for Anthropic models
+- **Web search**: Real-time web search for grounded responses (Anthropic models)
 
 ## Installation
 
@@ -124,27 +125,26 @@ If you need to specify a custom Python path:
 
 ### Available Models
 
-gpt.el supports the latest models from all providers:
+gpt.el supports the latest models from all providers. The built-in models are defined in `gpt-available-models`:
 
 **OpenAI:**
 
-- `gpt-4.1` - GPT-4.1
-- `gpt-4.5-preview` - GPT-4.5 Preview
-- `o3` - o3 (latest reasoning model)
-- `o4-mini` - o4-mini
+- `gpt-5.1` - GPT-5.1 (400k max tokens)
+- `gpt-5-mini` - GPT-5 Mini (200k max tokens)
+- `gpt-5-nano` - GPT-5 Nano (100k max tokens)
 
 **Anthropic:**
 
-- `claude-opus-4-5` - Claude 4.5 Opus (default)
-- `claude-sonnet-4-5` - Claude 4.5 Sonnet
-- `claude-sonnet-4-0` - Claude 4 Sonnet
-- `claude-opus-4-0` - Claude 4 Opus
+- `claude-opus-4-5` - Claude 4.5 Opus (default, 32k max tokens)
+- `claude-sonnet-4-5` - Claude 4.5 Sonnet (64k max tokens)
 
 **Google:**
 
-- `gemini-2.5-pro-preview-03-25` - Gemini 2.5 Pro Preview
+- `gemini-3-pro-preview` - Gemini 3 Pro Preview (60k max tokens)
 
 You can switch models interactively with `M-x gpt-switch-model` or `C-c C-m` in gpt-mode buffers.
+
+To add custom models, customize `gpt-available-models`. Each entry contains the API type, model ID, and max output tokens.
 
 To switch API providers:
 
@@ -164,7 +164,7 @@ To switch API providers:
 ### Main Commands
 
 - `gpt-chat` - Interactive prompt to choose context mode and enter command
-- `gpt-chat-multi-models` - Run the same command against multiple models (parallel buffers). Uses defaults from `gpt-multi-models-default` (GPT-5 and Claude 4.1 Opus). Use `C-u` to pick models interactively.
+- `gpt-chat-multi-models` - Run the same command against multiple models in parallel, each in its own buffer. Uses defaults from `gpt-multi-models-default`. Use `C-u` prefix to pick models interactively.
 - `gpt-chat-all-buffers` - Use all visible buffers as context
 - `gpt-chat-current-buffer` - Use only the current buffer as context
 - `gpt-edit-current-buffer` - Rewrite the current buffer with GPT, review the diff, and accept or reject the changes
@@ -219,21 +219,20 @@ Run `make check` to validate parentheses, load each file, byte-compile, and lint
 The Emacs package uses a Python backend script (`gpt.py`) to handle API calls. This script can also be used standalone:
 
 ```bash
-# If using from source with virtual environment
-.venv/bin/python gpt.py <api_key> <model> <max_tokens> <temperature> <api_type> <prompt_file>
-
-# Or with system Python
-python3 gpt.py <api_key> <model> <max_tokens> <temperature> <api_type> <prompt_file>
+# API key is read from stdin for security (not visible in process list)
+echo "your-api-key" | .venv/bin/python gpt.py <model> <max_tokens> <temperature> <api_type> <prompt_file>
 ```
 
 ### Backend Features
 
-- Specific exception handling for each API provider
-- Conversation format parsing (`User:` / `Assistant:` blocks)
-- Automatic logging to JSONL format
-- Robust error handling and validation
-- Streaming output support
-- OpenAI reasoning summaries
+- **Secure API key handling**: Keys passed via stdin, not command line
+- **Specific exception handling**: Custom errors for each API provider
+- **Conversation format parsing**: Supports `User:` / `Assistant:` blocks
+- **Automatic logging**: Conversations saved to JSONL format
+- **Streaming output**: Real-time response display
+- **Extended thinking**: Anthropic thinking mode with interleaved output
+- **Web search**: Grounded responses with web search (Anthropic)
+- **OpenAI reasoning**: Reasoning summaries for GPT-5 family
 
 ## Troubleshooting
 
