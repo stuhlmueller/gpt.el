@@ -36,20 +36,18 @@
          (process-environment
           (append
            (list
+            ;; Non-secret config only - API keys passed via stdin for security
             (format "GPT_API_TYPE=%s" (symbol-name gpt-api-type))
             (format "GPT_MODEL=%s" gpt-model)
             (format "GPT_MAX_TOKENS=%s" gpt-max-tokens)
             (format "GPT_TEMPERATURE=%s" gpt-temperature)
-            (format "OPENAI_API_KEY=%s" gpt-openai-key)
-            (format "ANTHROPIC_API_KEY=%s" gpt-anthropic-key)
-            (format "GOOGLE_API_KEY=%s" gpt-google-key)
             ;; OpenAI reasoning controls (for gpt-5 family)
             (format "GPT_OPENAI_REASONING_EFFORT=%s" gpt-openai-reasoning-effort)
             (format "GPT_OPENAI_REASONING_SUMMARY=%s" (or gpt-openai-reasoning-summary "")))
            process-environment))
-         ;; Build command arguments
+         ;; Build command arguments (api_key removed - passed via stdin)
          (cmd-args (list gpt-python-path gpt-script-path
-                         api-key gpt-model gpt-max-tokens gpt-temperature
+                         gpt-model gpt-max-tokens gpt-temperature
                          (symbol-name gpt-api-type) prompt-file))
          ;; Create a hidden buffer to capture stderr to avoid default
          ;; sentinel inserting "Process ... finished" messages.
@@ -89,6 +87,8 @@
                       :stderr stderr-buffer))
                (stderr-proc (and (buffer-live-p stderr-buffer)
                                   (get-buffer-process stderr-buffer))))
+          ;; Send API key via stdin (more secure than env vars or command line)
+          (process-send-string proc (concat api-key "\n"))
           ;; Remember stderr buffer so we can clean it later.
           (process-put proc 'gpt-stderr-buffer stderr-buffer)
           ;; Mirror stderr chunks into the main output buffer without default sentinel noise.
@@ -109,6 +109,11 @@
                                       (when (buffer-live-p buf)
                                         (kill-buffer buf))))))
           proc)
+      (file-error
+       (when (buffer-live-p stderr-buffer)
+         (kill-buffer stderr-buffer))
+       (gpt-message "Failed to start process (file error): %s" (error-message-string err))
+       nil)
       (error
        (when (buffer-live-p stderr-buffer)
          (kill-buffer stderr-buffer))

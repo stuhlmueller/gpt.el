@@ -59,7 +59,6 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Generate completions with OpenAI, Anthropic, or Google APIs.",
     )
-    p.add_argument("api_key", help="API key for the selected provider")
     p.add_argument("model", help="Model name to use for completion")
     p.add_argument("max_tokens", type=int, help="Maximum tokens to generate")
     p.add_argument("temperature", type=float, help="Temperature for sampling (0.0-2.0)")
@@ -140,6 +139,11 @@ def main() -> None:
     try:
         args = parse_args()
 
+        # Read API key from stdin (more secure than command line or env vars)
+        api_key = sys.stdin.readline().rstrip("\n")
+        if not api_key:
+            raise APIError("No API key provided via stdin")
+
         try:
             prompt = Path(args.prompt_file).read_text(encoding="utf-8")
         except OSError as err:
@@ -149,7 +153,7 @@ def main() -> None:
         if args.api_type == "openai":
             stream = call_openai(
                 prompt,
-                args.api_key,
+                api_key,
                 args.model,
                 args.max_tokens,
                 args.temperature,
@@ -158,7 +162,7 @@ def main() -> None:
         elif args.api_type == "anthropic":
             stream = stream_anthropic(
                 prompt,
-                args.api_key,
+                api_key,
                 args.model,
                 args.max_tokens,
                 args.temperature,
@@ -168,7 +172,7 @@ def main() -> None:
                 args.web_search,
             )
         else:
-            stream = stream_google(prompt, args.api_key, args.model, args.max_tokens, args.temperature)
+            stream = stream_google(prompt, api_key, args.model, args.max_tokens, args.temperature)
 
         completion = print_and_collect(stream, args.api_type)
 
