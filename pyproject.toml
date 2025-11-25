@@ -2,7 +2,7 @@
 name = "gpt-el"
 version = "2.0"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.52.0",
     "openai>=1.86.0",
@@ -20,7 +20,7 @@ markers = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 extend-exclude = ["__pycache__", ".venv"]
 
 [tool.ruff.lint]
