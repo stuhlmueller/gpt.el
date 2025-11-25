@@ -149,10 +149,17 @@ then specific delimiter lines override the content face.")
         (kill-new code)
         (message "Code block copied to clipboard.")))))
 
+(defun gpt--find-model-name (api-type model-id)
+  "Find display name in `gpt-available-models' for API-TYPE and MODEL-ID."
+  (cl-loop for (name . plist) in gpt-available-models
+           when (and (eq (plist-get plist :api) api-type)
+                     (equal (plist-get plist :id) model-id))
+           return name))
+
 (defun gpt-switch-model ()
   "Switch between OpenAI, Anthropic, and Google models."
   (interactive)
-  (let* ((current-model-name (car (rassoc (cons gpt-api-type gpt-model) gpt-available-models)))
+  (let* ((current-model-name (gpt--find-model-name gpt-api-type gpt-model))
          (prompt (format "Choose model (current: %s): "
                          (or current-model-name
                              (format "%s/%s" gpt-api-type gpt-model))))
@@ -162,11 +169,11 @@ then specific delimiter lines override the content face.")
          (model-info (cdr (assoc choice gpt-available-models))))
     (if model-info
         (progn
-          (setq gpt-api-type (car model-info)
-                gpt-model (cdr model-info))
+          (setq gpt-api-type (plist-get model-info :api)
+                gpt-model (plist-get model-info :id))
           (gpt-update-model-settings)  ; Update max_tokens and thinking_budget
           (message "Switched to %s model: %s (max_tokens=%s, thinking_budget=%s)"
-                   (symbol-name gpt-api-type) (cdr model-info)
+                   (symbol-name gpt-api-type) gpt-model
                    gpt-max-tokens gpt-thinking-budget))
       (message "Model selection cancelled."))))
 

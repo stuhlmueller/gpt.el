@@ -395,7 +395,8 @@ Otherwise, create a temporary buffer.  Use the `gpt-mode' for the output buffer.
     (completing-read-multiple prompt choices nil t)))
 
 (defun gpt--model-id-for-name (name)
-  "Return cons (API-TYPE . MODEL-ID) for model NAME from `gpt-available-models'."
+  "Return plist for model NAME from `gpt-available-models'.
+The plist contains :api, :id, and :max-tokens keys."
   (cdr (assoc name gpt-available-models)))
 
 (defun gpt--format-command-with-model (command model-id)
@@ -435,8 +436,8 @@ With a prefix argument (C-u), prompts to choose models interactively."
         (let* ((info (gpt--model-id-for-name model-name)))
           (unless info
             (user-error "Unknown model: %s" model-name))
-          (let* ((api-type (car info))
-                 (model-id (cdr info))
+          (let* ((api-type (plist-get info :api))
+                 (model-id (plist-get info :id))
                  ;; Dynamically bind per-run model and settings
                  (gpt-api-type api-type)
                  (gpt-model model-id))

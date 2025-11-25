@@ -16,6 +16,7 @@
 ;;; Code:
 
 (require 'savehist)
+(require 'cl-lib)
 
 (defvar gpt-max-tokens "64000")
 (defvar gpt-thinking-budget "21333")
@@ -33,45 +34,39 @@
   :group 'gpt)
 
 (defcustom gpt-available-models
-  '(("GPT-5.1" . (openai . "gpt-5.1"))
-    ("GPT-5 Mini" . (openai . "gpt-5-mini"))
-    ("GPT-5 Nano" . (openai . "gpt-5-nano"))
-    ("Claude 4.5 Opus" . (anthropic . "claude-opus-4-5"))
-    ("Claude 4.5 Sonnet" . (anthropic . "claude-sonnet-4-5"))
-    ("Gemini 3 Pro (Preview)" . (google . "gemini-3-pro-preview")))
+  '(("GPT-5.1" . (:api openai :id "gpt-5.1" :max-tokens "400000"))
+    ("GPT-5 Mini" . (:api openai :id "gpt-5-mini" :max-tokens "200000"))
+    ("GPT-5 Nano" . (:api openai :id "gpt-5-nano" :max-tokens "100000"))
+    ("Claude 4.5 Opus" . (:api anthropic :id "claude-opus-4-5" :max-tokens "32000"))
+    ("Claude 4.5 Sonnet" . (:api anthropic :id "claude-sonnet-4-5" :max-tokens "64000"))
+    ("Gemini 3 Pro (Preview)" . (:api google :id "gemini-3-pro-preview" :max-tokens "60000")))
   "Available models for GPT commands.
-Each entry is a cons cell where the car is the display name and
-the cdr is a cons cell of (API-TYPE . MODEL-ID)."
-  :type '(alist :key-type string
-                :value-type (cons (choice (const openai)
-                                          (const anthropic)
-                                          (const google))
-                                  string))
+Each entry is (DISPLAY-NAME . PLIST) where PLIST contains:
+  :api        - API provider symbol (openai, anthropic, google)
+  :id         - Model ID string for the API
+  :max-tokens - Maximum output tokens as string
+
+This is the single source of truth for model definitions."
+  :type '(alist :key-type string :value-type plist)
   :group 'gpt)
 
 ;; Default models for multi-model command
 (defcustom gpt-multi-models-default '("GPT-5.1" "Claude 4.5 Opus" "Gemini 3 Pro (Preview)")
   "Models used by `gpt-chat-multi-models'.
-Use a prefix argument (C-u) to pick models interactively."
+Use a prefix argument (C-u) to pick models interactively.
+Model names must match keys in `gpt-available-models'."
   :type '(repeat (string :tag "Model name (display label)"))
   :group 'gpt)
 
-  ;; Model-specific max tokens
-(defcustom gpt-model-max-tokens
-  '(("claude-opus-4-5" . "32000")
-    ("claude-sonnet-4-5" . "64000")
-    ("gpt-5.1" . "400000")
-    ("gpt-5-mini" . "200000")
-    ("gpt-5-nano" . "100000")
-    ("gemini-3-pro-preview" . "60000"))
-  "Maximum output tokens for each model."
-  :type '(alist :key-type string :value-type string)
-  :group 'gpt)
+(defun gpt--model-max-tokens (model-id)
+  "Return max tokens for MODEL-ID from `gpt-available-models', or nil."
+  (cl-loop for (_name . plist) in gpt-available-models
+           when (equal (plist-get plist :id) model-id)
+           return (plist-get plist :max-tokens)))
 
 (defun gpt-update-model-settings ()
   "Update max_tokens and thinking_budget based on the current model."
-  (let* ((model-max (cdr (assoc gpt-model gpt-model-max-tokens)))
-         (max-tokens (or model-max "64000"))  ; Default to 64000 if model not found
+  (let* ((max-tokens (or (gpt--model-max-tokens gpt-model) "64000"))  ; Default if model not found
          (max-tokens-num (string-to-number max-tokens))
          (thinking-budget-num (/ max-tokens-num 3))  ; 1/3 of max tokens
          (thinking-budget (number-to-string thinking-budget-num)))
