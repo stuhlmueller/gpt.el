@@ -109,7 +109,9 @@ lint-verbose:
 test:
 	@if [ -d test ]; then \
 	  echo "Running ERT tests..."; \
-	  $(EMACS) -Q --batch -L . -L test -l ert -f ert-run-tests-batch-and-exit; \
+	  $(EMACS) -Q --batch -L . -L test -l ert \
+	    --eval "(mapc (lambda (f) (load f)) (directory-files \"test\" t \".*\\\\.el\"))" \
+	    -f ert-run-tests-batch-and-exit; \
 	else \
 	  echo "No ERT tests found; skipping."; \
 	fi

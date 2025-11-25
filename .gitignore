@@ -7,3 +7,6 @@ repomix*
 *.elc
 *.cpython*
 .emacs-packages/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
