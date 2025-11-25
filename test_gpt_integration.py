@@ -9,6 +9,7 @@ import os
 import sys
 
 import pytest
+from google.genai import errors as genai_errors
 
 # Import functions and constants from gpt.py and providers
 from gpt import print_and_collect
@@ -140,7 +141,8 @@ def test_google_basic_integration(monkeypatch) -> None:
     if not api_key or api_key == "NOT SET":
         pytest.skip("Google API key not set or invalid, skipping integration test.")
 
-    model = "gemini-1.5-flash"  # Using a fast model for tests
+    # Use a generally available preview model; override with GOOGLE_MODEL if set.
+    model = os.environ.get("GOOGLE_MODEL", "gemini-3-pro-preview")
 
     mock_stdout = io.StringIO()
     monkeypatch.setattr(sys, "stdout", mock_stdout)
@@ -161,6 +163,10 @@ def test_google_basic_integration(monkeypatch) -> None:
         assert len(stdout_val) > 0
         assert any(greeting in stdout_val.lower() for greeting in ["hello", "hi", "hey", "greetings"])
 
+    except genai_errors.ClientError as e:
+        if "NOT_FOUND" in str(e):
+            pytest.skip(f"Google model {model} not available; skipping.")
+        raise
     except Exception as e:
         pytest.fail(f"Google integration test failed: {e}")
 
