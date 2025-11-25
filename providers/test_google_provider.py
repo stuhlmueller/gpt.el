@@ -19,15 +19,17 @@ class TestGoogleProvider:
         """Test that missing genai package raises appropriate error."""
         with patch("providers.google_provider.genai", None):
             with pytest.raises(MissingDependencyError, match="Google GenAI package"):
-                stream_google("test prompt", "test_key", "gemini-pro", 100, 0.5)
+                # Must consume generator to trigger the check
+                list(stream_google("test prompt", "test_key", "gemini-pro", 100, 0.5))
 
     def test_invalid_api_key(self) -> None:
         """Test that invalid API key raises appropriate error."""
         with pytest.raises(InvalidAPIKeyError, match="Google API key not set"):
-            stream_google("test prompt", "NOT SET", "gemini-pro", 100, 0.5)
+            # Must consume generator to trigger the check
+            list(stream_google("test prompt", "NOT SET", "gemini-pro", 100, 0.5))
 
         with pytest.raises(InvalidAPIKeyError, match="Google API key not set"):
-            stream_google("test prompt", "", "gemini-pro", 100, 0.5)
+            list(stream_google("test prompt", "", "gemini-pro", 100, 0.5))
 
     @patch("providers.google_provider.genai")
     @patch("providers.google_provider.genai_types")
@@ -35,17 +37,18 @@ class TestGoogleProvider:
         """Test stream_google with a raw string prompt."""
         mock_client = Mock()
         mock_genai.Client.return_value = mock_client
-        mock_stream = Mock()
-        mock_client.models.generate_content_stream.return_value = mock_stream
+        mock_chunk = Mock(text="Hello")
+        mock_client.models.generate_content_stream.return_value = [mock_chunk]
 
         # Mock the types
         mock_genai_types.UserContent = Mock
         mock_genai_types.Part.from_text = Mock(return_value=Mock())
         mock_genai_types.GenerateContentConfig = Mock
 
-        result = stream_google("Hello, world!", "test_key", "gemini-pro", 100, 0.5)
+        # Consume the generator to trigger the API call
+        result = list(stream_google("Hello, world!", "test_key", "gemini-pro", 100, 0.5))
 
-        assert result == mock_stream
+        assert result == [mock_chunk]
         mock_client.models.generate_content_stream.assert_called_once()
         call_args = mock_client.models.generate_content_stream.call_args[1]
 
@@ -58,8 +61,8 @@ class TestGoogleProvider:
         """Test stream_google with role-based messages."""
         mock_client = Mock()
         mock_genai.Client.return_value = mock_client
-        mock_stream = Mock()
-        mock_client.models.generate_content_stream.return_value = mock_stream
+        mock_chunk = Mock(text="Response")
+        mock_client.models.generate_content_stream.return_value = [mock_chunk]
 
         # Mock the types
         mock_genai_types.UserContent = Mock
@@ -68,9 +71,10 @@ class TestGoogleProvider:
         mock_genai_types.GenerateContentConfig = Mock
 
         prompt = "user: Hello\nmodel: Hi there!\nhuman: How are you?"
-        result = stream_google(prompt, "test_key", "gemini-pro", 100, 0.0)
+        # Consume the generator to trigger the API call
+        result = list(stream_google(prompt, "test_key", "gemini-pro", 100, 0.0))
 
-        assert result == mock_stream
+        assert result == [mock_chunk]
         call_args = mock_client.models.generate_content_stream.call_args[1]
 
         # Check that messages were parsed correctly
@@ -83,8 +87,8 @@ class TestGoogleProvider:
         """Test that max_tokens is capped at DEFAULT_GOOGLE_MAX_TOKENS."""
         mock_client = Mock()
         mock_genai.Client.return_value = mock_client
-        mock_stream = Mock()
-        mock_client.models.generate_content_stream.return_value = mock_stream
+        mock_chunk = Mock(text="Response")
+        mock_client.models.generate_content_stream.return_value = [mock_chunk]
 
         # Mock the types
         mock_genai_types.UserContent = Mock
@@ -92,8 +96,8 @@ class TestGoogleProvider:
         mock_config = Mock()
         mock_genai_types.GenerateContentConfig = mock_config
 
-        # Request more than the limit
-        stream_google("Hello", "test_key", "gemini-pro", 50000, 0.5)
+        # Request more than the limit - consume generator to trigger the call
+        list(stream_google("Hello", "test_key", "gemini-pro", 50000, 0.5))
 
         # Check that config was created with the capped value
         # Get the call args from the mock
@@ -108,20 +112,20 @@ class TestGoogleProvider:
         mock_client = Mock()
         mock_genai.Client.return_value = mock_client
 
-        # Test authentication error
+        # Test authentication error - must consume generator to trigger the error
         mock_client.models.generate_content_stream.side_effect = ValueError("Invalid api_key")
         with pytest.raises(InvalidAPIKeyError, match="Google API authentication failed"):
-            stream_google("Hello", "test_key", "gemini-pro", 100, 0.5)
+            list(stream_google("Hello", "test_key", "gemini-pro", 100, 0.5))
 
         # Test connection error
         mock_client.models.generate_content_stream.side_effect = ConnectionError("Network error")
         with pytest.raises(APIError, match="Google API connection error"):
-            stream_google("Hello", "test_key", "gemini-pro", 100, 0.5)
+            list(stream_google("Hello", "test_key", "gemini-pro", 100, 0.5))
 
         # Test timeout error
         mock_client.models.generate_content_stream.side_effect = TimeoutError("Request timeout")
         with pytest.raises(APIError, match="Google API timeout"):
-            stream_google("Hello", "test_key", "gemini-pro", 100, 0.5)
+            list(stream_google("Hello", "test_key", "gemini-pro", 100, 0.5))
 
     def test_handle_google_stream(self, monkeypatch) -> None:
         """Test handling of Google stream responses."""

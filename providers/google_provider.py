@@ -69,7 +69,8 @@ def stream_google(
             contents=contents,
             config=genai_types.GenerateContentConfig(**config_params),
         )
-        return api_response
+        # Yield from the stream to keep the client alive until consumption is complete
+        yield from api_response
     except ValueError as e:
         if "api_key" in str(e).lower() or "authentication" in str(e).lower():
             raise InvalidAPIKeyError(f"Google API authentication failed: {e}") from e
