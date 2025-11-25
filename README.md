@@ -210,6 +210,35 @@ Thinking mode commands:
 - **current-buffer**: Uses only the current buffer as context, with cursor position marked
 - **none**: Uses no buffer context
 
+### Thinking Mode (Anthropic)
+
+Extended thinking mode allows Claude models to reason step-by-step before responding. This is enabled by default and improves quality for complex tasks.
+
+**Controls:**
+
+- `gpt-thinking-enabled` - Enable/disable extended thinking (default: t)
+- `gpt-interleaved-thinking` - Stream thinking blocks in real-time (default: t)
+- `gpt-thinking-budget` - Token budget for thinking (auto-set to 1/3 of max_tokens)
+
+**Constraints:**
+
+- Temperature is automatically set to 1.0 when thinking is enabled (API requirement)
+- Thinking budget must be less than max_tokens
+- Interleaved thinking and the 1M context window beta are mutually exclusive
+
+**Keybindings** (in gpt-mode buffers):
+
+- `C-c C-j t` - Toggle extended thinking
+- `C-c C-j i` - Toggle interleaved thinking
+- `C-c C-j s` - Show current thinking status
+
+### Web Search (Anthropic)
+
+Web search allows Claude to access current information from the web, useful for questions about recent events.
+
+- `gpt-web-search` - Enable/disable web search (default: t)
+- `C-c C-j w` - Toggle web search
+
 ## Development
 
 Run `make check` to validate parentheses, load each file, byte-compile, and lint the Elisp sources. Use `make help` to see all available maintenance targets.

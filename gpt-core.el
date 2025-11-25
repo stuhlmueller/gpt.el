@@ -121,17 +121,38 @@ NEWVAL is the new value and OPERATION is the kind of change (set/let)."
   :group 'gpt)
 
 (defcustom gpt-thinking-enabled t
-  "Enable extended thinking mode for Anthropic models."
+  "Enable extended thinking mode for Anthropic models.
+
+Constraints when enabled:
+- Temperature must be 1.0 (automatically enforced by the API)
+- Thinking budget must be less than max_tokens
+- Interleaved thinking and 1M context beta are mutually exclusive
+
+Extended thinking allows the model to reason step-by-step before
+responding, which can improve quality for complex tasks."
   :type 'boolean
   :group 'gpt)
 
 (defcustom gpt-interleaved-thinking t
-  "Enable interleaved thinking with tools for Anthropic models."
+  "Enable interleaved thinking with tools for Anthropic models.
+
+When enabled, thinking blocks are streamed as they occur, showing
+the model's reasoning process in real-time.
+
+Note: Interleaved thinking is mutually exclusive with the 1M context
+window beta.  When interleaved thinking is enabled, the context window
+is limited to the standard size."
   :type 'boolean
   :group 'gpt)
 
 (defcustom gpt-web-search t
-  "Enable web search for models that support it."
+  "Enable web search for models that support it.
+
+For Anthropic models, this uses the built-in web search tool to
+ground responses with current information from the web.
+
+Note: Web search adds latency but improves accuracy for questions
+about recent events or facts that may have changed since training."
   :type 'boolean
   :group 'gpt)
 

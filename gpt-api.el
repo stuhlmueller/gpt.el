@@ -72,6 +72,13 @@
                   (cond ((eq gpt-api-type 'openai) "gpt-openai-key")
                         ((eq gpt-api-type 'anthropic) "gpt-anthropic-key")
                         ((eq gpt-api-type 'google) "gpt-google-key"))))
+    ;; Validate thinking mode constraints for Anthropic
+    (when (and (eq gpt-api-type 'anthropic) gpt-thinking-enabled)
+      (let ((budget (string-to-number gpt-thinking-budget))
+            (max-tok (string-to-number gpt-max-tokens)))
+        (when (>= budget max-tok)
+          (user-error "Thinking budget (%s) must be less than max_tokens (%s)"
+                      gpt-thinking-budget gpt-max-tokens))))
     ;; Validate script exists
     (unless (file-exists-p gpt-script-path)
       (user-error "GPT script not found at %s" gpt-script-path))
