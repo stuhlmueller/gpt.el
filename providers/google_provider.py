@@ -16,9 +16,11 @@ from .common import (
 # Third-party imports (optional)
 genai: Optional[Any] = None
 genai_types: Optional[Any] = None
+genai_errors: Optional[Any] = None
 
 try:
     import google.genai as genai
+    from google.genai import errors as genai_errors
     from google.genai import types as genai_types
 except ImportError:
     pass
@@ -76,6 +78,19 @@ def stream_google(
         raise APIError(f"Google API connection error: {e}") from e
     except TimeoutError as e:
         raise APIError(f"Google API timeout: {e}") from e
+    except Exception as e:
+        # Handle Google-specific errors if the module is available
+        if genai_errors is not None:
+            if isinstance(e, genai_errors.ClientError):
+                error_msg = str(e)
+                if "NOT_FOUND" in error_msg:
+                    raise APIError(f"Google API model not found: {e}") from e
+                if "PERMISSION_DENIED" in error_msg or "authentication" in error_msg.lower():
+                    raise InvalidAPIKeyError(f"Google API authentication failed: {e}") from e
+                raise APIError(f"Google API client error: {e}") from e
+            if isinstance(e, genai_errors.APIError):
+                raise APIError(f"Google API error: {e}") from e
+        raise
 
 
 def handle_google_stream(stream: Iterator["GenerateContentResponse"]) -> Iterator[str]:
