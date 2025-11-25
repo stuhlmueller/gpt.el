@@ -198,6 +198,7 @@ then specific delimiter lines override the content face.")
   (interactive)
   (unless (eq major-mode 'gpt-mode)
     (user-error "Not in a gpt output buffer"))
+  (gpt-validate-api-key)
   (let* ((gpt-buffer (current-buffer))
          (buffer-string (buffer-substring-no-properties (point-min) (point-max)))
          (prompt (concat buffer-string "\n\nUser: Create a title with a maximum of 50 chars for the chat above. Say only the title, nothing else. No quotes.")))
@@ -208,14 +209,26 @@ then specific delimiter lines override the content face.")
                            ((eq gpt-api-type 'anthropic) gpt-anthropic-key)
                            ((eq gpt-api-type 'google) gpt-google-key)
                            (t "NOT SET")))
-            (api-type-str (symbol-name gpt-api-type)))
-        (erase-buffer)
+            (api-type-str (symbol-name gpt-api-type))
+            (output-buffer (generate-new-buffer " *gpt-title-output*")))
         (gpt-message "Asking GPT to generate buffer name...")
-        (call-process gpt-python-path nil t nil
-                      gpt-script-path api-key gpt-model gpt-max-tokens gpt-temperature api-type-str prompt-file)
-        (let ((generated-title (string-trim (buffer-string))))
-          (with-current-buffer gpt-buffer
-            (rename-buffer (format "*GPT: %s*" generated-title))))))))
+        (unwind-protect
+            (progn
+              ;; Use call-process-region to pass API key via stdin (more secure)
+              (with-temp-buffer
+                (insert api-key "\n")
+                (call-process-region (point-min) (point-max)
+                                     gpt-python-path nil output-buffer nil
+                                     gpt-script-path gpt-model gpt-max-tokens
+                                     gpt-temperature api-type-str prompt-file))
+              (let ((generated-title (string-trim (with-current-buffer output-buffer
+                                                    (buffer-string)))))
+                (with-current-buffer gpt-buffer
+                  (rename-buffer (format "*GPT: %s*" generated-title)))))
+          (when (buffer-live-p output-buffer)
+            (kill-buffer output-buffer))
+          (when (file-exists-p prompt-file)
+            (delete-file prompt-file)))))))
 
 (defun gpt-chat-clipboard ()
   "Run a GPT command using the current clipboard/kill-ring content as context.
