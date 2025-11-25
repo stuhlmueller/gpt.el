@@ -17,6 +17,9 @@
 
 (require 'savehist)
 
+(defvar gpt-max-tokens "64000")
+(defvar gpt-thinking-budget "21333")
+
 (defgroup gpt nil
   "Interface to instruction-following language models."
   :group 'external
@@ -29,25 +32,11 @@
                  (const :tag "Google" google))
   :group 'gpt)
 
-(defcustom gpt-model "claude-sonnet-4-5"
-  "The model to use (e.g., \\='gpt-4.1\\=', \\='claude-sonnet-4-0\\=')."
-  :type 'string
-  :group 'gpt)
-
-(defcustom gpt-max-tokens "64000"
-  "The max_tokens value used with the chosen model."
-  :type 'string
-  :group 'gpt)
-
-(defcustom gpt-temperature "0"
-  "The temperature value used with the chosen model."
-  :type 'string
-  :group 'gpt)
-
 (defcustom gpt-available-models
   '(("GPT-5.1" . (openai . "gpt-5.1"))
     ("GPT-5 Mini" . (openai . "gpt-5-mini"))
     ("GPT-5 Nano" . (openai . "gpt-5-nano"))
+    ("Claude 4.5 Opus" . (anthropic . "claude-opus-4-5"))
     ("Claude 4.5 Sonnet" . (anthropic . "claude-sonnet-4-5"))
     ("Gemini 3 Pro (Preview)" . (google . "gemini-3-pro-preview")))
   "Available models for GPT commands.
@@ -61,7 +50,7 @@ the cdr is a cons cell of (API-TYPE . MODEL-ID)."
   :group 'gpt)
 
 ;; Default models for multi-model command
-(defcustom gpt-multi-models-default '("GPT-5.1" "Claude 4.5 Sonnet" "Gemini 3 Pro (Preview)")
+(defcustom gpt-multi-models-default '("GPT-5.1" "Claude 4.5 Opus" "Gemini 3 Pro (Preview)")
   "Models used by `gpt-chat-multi-models'.
 Use a prefix argument (C-u) to pick models interactively."
   :type '(repeat (string :tag "Model name (display label)"))
@@ -69,13 +58,56 @@ Use a prefix argument (C-u) to pick models interactively."
 
   ;; Model-specific max tokens
 (defcustom gpt-model-max-tokens
-  '(("claude-sonnet-4-5" . "64000")
+  '(("claude-opus-4-5" . "32000")
+    ("claude-sonnet-4-5" . "64000")
     ("gpt-5.1" . "400000")
     ("gpt-5-mini" . "200000")
     ("gpt-5-nano" . "100000")
     ("gemini-3-pro-preview" . "60000"))
   "Maximum output tokens for each model."
   :type '(alist :key-type string :value-type string)
+  :group 'gpt)
+
+(defun gpt-update-model-settings ()
+  "Update max_tokens and thinking_budget based on the current model."
+  (let* ((model-max (cdr (assoc gpt-model gpt-model-max-tokens)))
+         (max-tokens (or model-max "64000"))  ; Default to 64000 if model not found
+         (max-tokens-num (string-to-number max-tokens))
+         (thinking-budget-num (/ max-tokens-num 3))  ; 1/3 of max tokens
+         (thinking-budget (number-to-string thinking-budget-num)))
+    (setq gpt-max-tokens max-tokens)
+    (setq gpt-thinking-budget thinking-budget)
+    ;; Avoid noisy messages during package load; keep variables in sync silently.
+    ))
+
+(defun gpt--set-model (symbol value)
+  "Set SYMBOL to VALUE and refresh derived settings."
+  (set-default symbol value)
+  (let ((gpt-model value))
+    (gpt-update-model-settings)))
+
+(defun gpt--model-watcher (symbol newval operation _where)
+  "Keep derived settings in sync when SYMBOL is changed.
+NEWVAL is the new value and OPERATION is the kind of change (set/let)."
+  (when (and (eq symbol 'gpt-model)
+             (memq operation '(set let)))
+    (let ((gpt-model newval))
+      (gpt-update-model-settings))))
+
+(defcustom gpt-model "claude-opus-4-5"
+  "The model to use (e.g., \\='gpt-4.1\\=', \\='claude-opus-4-5\\=')."
+  :type 'string
+  :set #'gpt--set-model
+  :group 'gpt)
+
+(defcustom gpt-max-tokens "64000"
+  "The max_tokens value used with the chosen model."
+  :type 'string
+  :group 'gpt)
+
+(defcustom gpt-temperature "0"
+  "The temperature value used with the chosen model."
+  :type 'string
   :group 'gpt)
 
 (defcustom gpt-openai-key "NOT SET"
@@ -117,7 +149,10 @@ Use a prefix argument (C-u) to pick models interactively."
 (defcustom gpt-openai-reasoning-summary "detailed"
   "Reasoning summary for OpenAI GPT-5 family models.
 Use nil, auto, concise, or detailed."
-  :type '(choice (const nil) (const "detailed"))
+  :type '(choice (const nil)
+                 (const "auto")
+                 (const "concise")
+                 (const "detailed"))
   :group 'gpt)
 
 (defvar gpt-thinking-budget "21333"
@@ -194,20 +229,16 @@ have the same meaning as for `completing-read'."
            map)))
     (completing-read prompt collection predicate require-match initial-input hist def inherit-input-method)))
 
-(defun gpt-update-model-settings ()
-  "Update max_tokens and thinking_budget based on the current model."
-  (let* ((model-max (cdr (assoc gpt-model gpt-model-max-tokens)))
-         (max-tokens (or model-max "64000"))  ; Default to 64000 if model not found
-         (max-tokens-num (string-to-number max-tokens))
-         (thinking-budget-num (/ max-tokens-num 3))  ; 1/3 of max tokens
-         (thinking-budget (number-to-string thinking-budget-num)))
-    (setq gpt-max-tokens max-tokens)
-    (setq gpt-thinking-budget thinking-budget)
-    ;; Avoid noisy messages during package load; keep variables in sync silently.
-    ))
-
 ;; Initialize settings on load
 (gpt-update-model-settings)
+
+;; Keep derived settings in sync when gpt-model changes via setq/customize.
+(defvar gpt--model-watcher-installed nil
+  "Whether the gpt-model watcher has been installed.")
+(when (and (fboundp 'add-variable-watcher)
+           (not gpt--model-watcher-installed))
+  (add-variable-watcher 'gpt-model #'gpt--model-watcher)
+  (setq gpt--model-watcher-installed t))
 
 (provide 'gpt-core)
 ;;; gpt-core.el ends here

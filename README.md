@@ -4,7 +4,7 @@
   <img src="gpt.gif" alt="gpt.el demo" width="600"/>
 </p>
 
-gpt.el is an Emacs package that lets you interact with instruction-following language models like GPT-4.5, o3, Claude 4 Sonnet, Claude 4 Opus, and Gemini 2.5 Pro from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
+gpt.el is an Emacs package that lets you interact with instruction-following language models like GPT-4.5, o3, Claude 4.5 Opus, Claude 4.5 Sonnet, and Gemini 2.5 Pro from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
 
 ## Features
 
@@ -103,7 +103,7 @@ You need to set at least one of the variables `gpt-openai-key`, `gpt-anthropic-k
 Optionally, customize the model parameters:
 
 ```elisp
-(setq gpt-model "claude-3-7-sonnet-latest")  ; Default model
+(setq gpt-model "claude-opus-4-5")  ; Default model (auto-updates token budget)
 (setq gpt-max-tokens "64000")  ; Automatically set based on model
 (setq gpt-temperature "0")
 ```
@@ -135,7 +135,8 @@ gpt.el supports the latest models from all providers:
 
 **Anthropic:**
 
-- `claude-3-7-sonnet-latest` - Claude 3.7 Sonnet (default)
+- `claude-opus-4-5` - Claude 4.5 Opus (default)
+- `claude-sonnet-4-5` - Claude 4.5 Sonnet
 - `claude-sonnet-4-0` - Claude 4 Sonnet
 - `claude-opus-4-0` - Claude 4 Opus
 

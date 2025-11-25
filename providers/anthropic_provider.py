@@ -109,8 +109,8 @@ def stream_anthropic(
 
         headers: dict[str, str] = {}
 
-        # Enable large context window for Sonnet 4.5
-        if model == "claude-sonnet-4-5":
+        # Enable large context window for Claude 4.5 models
+        if model in ("claude-sonnet-4-5", "claude-opus-4-5"):
             headers["anthropic-beta"] = "context-1m-2025-08-07"
 
         # Note: interleaved-thinking and context-1m betas are mutually exclusive
