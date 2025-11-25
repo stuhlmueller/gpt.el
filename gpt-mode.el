@@ -210,7 +210,10 @@ then specific delimiter lines override the content face.")
             (rename-buffer (format "*GPT: %s*" generated-title))))))))
 
 (defun gpt-chat-clipboard ()
-  "Run GPT command with clipboard content as context."
+  "Run a GPT command using the current clipboard/kill-ring content as context.
+Prompts for a command, creates a new GPT output buffer, inserts the
+clipboard content as context, and runs GPT to generate a response.
+Useful for quickly processing text copied from other applications."
   (interactive)
   (let* ((clipboard-text (current-kill 0))
          (command (gpt-read-command nil t))

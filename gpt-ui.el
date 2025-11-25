@@ -457,7 +457,9 @@ With a prefix argument (C-u), prompts to choose models interactively."
                 (gpt-run-buffer output-buffer)))))))))
 
 (defun gpt-insert-command (command)
-  "Insert COMMAND to GPT in chat format into the current buffer."
+  "Insert COMMAND into the current buffer in GPT chat format.
+The command is formatted as a User message followed by an Assistant
+prompt marker, ready for GPT to generate a response."
   (let ((template "User: %s\n\nAssistant: "))
     (insert (format template command))))
 
@@ -522,7 +524,11 @@ In all cases, if there is an active region, it will be included."
   (gpt-chat nil))
 
 (defun gpt-follow-up ()
-  "Run a follow-up GPT command on the output buffer and append the output stream."
+  "Continue the conversation in the current GPT buffer with a new command.
+Prompts for a new command, appends it to the buffer in chat format,
+and runs GPT to generate a response.  The conversation history in the
+buffer provides context for the follow-up.  Must be called from a
+buffer in `gpt-mode'."
   (interactive)
   (unless (eq major-mode 'gpt-mode)
     (user-error "Not in a gpt output buffer"))
