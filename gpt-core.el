@@ -193,6 +193,20 @@ inherit markdown syntax highlighting and features."
 
 (add-to-list 'savehist-additional-variables 'gpt-command-history)
 
+(defun gpt-validate-api-key ()
+  "Check that the API key for the current `gpt-api-type' is configured.
+Signals a `user-error' with a helpful message if the key is not set."
+  (let ((api-key (cond ((eq gpt-api-type 'openai) gpt-openai-key)
+                       ((eq gpt-api-type 'anthropic) gpt-anthropic-key)
+                       ((eq gpt-api-type 'google) gpt-google-key)
+                       (t "NOT SET")))
+        (key-var (cond ((eq gpt-api-type 'openai) "gpt-openai-key")
+                       ((eq gpt-api-type 'anthropic) "gpt-anthropic-key")
+                       ((eq gpt-api-type 'google) "gpt-google-key"))))
+    (when (or (null api-key) (string= api-key "NOT SET") (string-empty-p api-key))
+      (user-error "API key for %s is not set. Please configure `%s'"
+                  (symbol-name gpt-api-type) key-var))))
+
 (defun gpt-display-command-history ()
   "Display the `gpt-command-history' in a buffer."
   (interactive)

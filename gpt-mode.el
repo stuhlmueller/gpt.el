@@ -20,6 +20,7 @@
 
 (declare-function gpt-chat-completion "gpt-ui" (&optional context-mode))
 (declare-function gpt-insert-command "gpt-ui" (command))
+(declare-function gpt-validate-api-key "gpt-core" nil)
 (declare-function gpt-run-buffer "gpt-api" (output-buffer))
 (declare-function gpt-message "gpt-api" (message))
 (declare-function gpt-update-model-settings "gpt-core" nil)
@@ -215,6 +216,7 @@ Prompts for a command, creates a new GPT output buffer, inserts the
 clipboard content as context, and runs GPT to generate a response.
 Useful for quickly processing text copied from other applications."
   (interactive)
+  (gpt-validate-api-key)
   (let* ((clipboard-text (current-kill 0))
          (command (gpt-read-command nil t))
          (output-buffer (gpt-create-output-buffer command)))

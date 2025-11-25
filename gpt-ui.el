@@ -417,6 +417,7 @@ With a prefix argument (C-u), prompts to choose models interactively."
                                              nil t)))
                  (list (unless (string= choice "none") (intern choice))
                        current-prefix-arg)))
+  ;; Note: Multi-model validates each API key as it runs each model
   (let* ((command (gpt-read-command context-mode t))
          (models (if prompt-for-models
                      (gpt--read-multiple-models)
@@ -467,6 +468,7 @@ prompt marker, ready for GPT to generate a response."
 (defun gpt-edit-current-buffer ()
   "Rewrite the current buffer via GPT and apply changes after review."
   (interactive)
+  (gpt-validate-api-key)
   (let* ((raw-command (gpt-read-command 'current-buffer t))
          (command (string-trim raw-command)))
     (when (string-empty-p command)
@@ -490,6 +492,7 @@ In all cases, if there is an active region, it will be included."
                                                   nil t)))
                       (unless (string= choice "none")
                         (intern choice)))))
+  (gpt-validate-api-key)
   (let* ((command (gpt-read-command context-mode t))  ; Pass t to use selection
          (output-buffer (gpt-create-output-buffer command))
          (input (gpt-get-context context-mode)))
@@ -549,6 +552,7 @@ CONTEXT-MODE can be:
                                                   nil t)))
                       (unless (string= choice "none")
                         (intern choice)))))
+  (gpt-validate-api-key)
   (let* ((full-context (gpt-get-context context-mode))
          (source-buffer-name (buffer-name))
          (output-buffer (gpt-create-output-buffer
