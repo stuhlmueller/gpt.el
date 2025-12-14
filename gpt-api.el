@@ -32,7 +32,7 @@
          (api-key (cond ((eq gpt-api-type 'openai) gpt-openai-key)
                         ((eq gpt-api-type 'anthropic) gpt-anthropic-key)
                         ((eq gpt-api-type 'google) gpt-google-key)
-                        (t "NOT SET")))
+                        (t nil)))
          (process-environment
           (append
            (list
@@ -52,12 +52,14 @@
          ;; Create a hidden buffer to capture stderr to avoid default
          ;; sentinel inserting "Process ... finished" messages.
          (stderr-buffer (generate-new-buffer " *gpt-stderr*")))
+    ;; Validate API key (handles nil, empty, etc.)
+    (gpt-validate-api-key)
     ;; Add thinking mode arguments for Anthropic
     (when (eq gpt-api-type 'anthropic)
       (when gpt-thinking-enabled
-        (setq cmd-args (append cmd-args '("--thinking-enabled"))))
-      (when gpt-thinking-enabled
-        (setq cmd-args (append cmd-args (list "--thinking-budget" gpt-thinking-budget))))
+        (setq cmd-args (append cmd-args
+                               (list "--thinking-enabled"
+                                     "--thinking-budget" gpt-thinking-budget))))
       (when gpt-interleaved-thinking
         (setq cmd-args (append cmd-args '("--interleaved-thinking"))))
       (when gpt-web-search
@@ -65,13 +67,6 @@
     ;; Add web search argument if enabled and not already added for Anthropic
     (when (and gpt-web-search (not (eq gpt-api-type 'anthropic)))
       (setq cmd-args (append cmd-args '("--web-search"))))
-    ;; Validate API key
-    (when (string= api-key "NOT SET")
-      (user-error "API key for %s is not set.  Please configure %s"
-                  (symbol-name gpt-api-type)
-                  (cond ((eq gpt-api-type 'openai) "gpt-openai-key")
-                        ((eq gpt-api-type 'anthropic) "gpt-anthropic-key")
-                        ((eq gpt-api-type 'google) "gpt-google-key"))))
     ;; Validate thinking mode constraints for Anthropic
     (when (and (eq gpt-api-type 'anthropic) gpt-thinking-enabled)
       (let ((budget (string-to-number gpt-thinking-budget))

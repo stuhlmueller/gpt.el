@@ -15,11 +15,8 @@
 
 ;;; Code:
 
-(require 'savehist)
 (require 'cl-lib)
-
-(defvar gpt-max-tokens "64000")
-(defvar gpt-thinking-budget "21333")
+(require 'subr-x)
 
 (defgroup gpt nil
   "Interface to instruction-following language models."
@@ -34,7 +31,8 @@
   :group 'gpt)
 
 (defcustom gpt-available-models
-  '(("GPT-5.1" . (:api openai :id "gpt-5.1" :max-tokens "400000"))
+  '(("GPT-5.2" . (:api openai :id "gpt-5.2" :max-tokens "400000"))
+    ("GPT-5.1" . (:api openai :id "gpt-5.1" :max-tokens "400000"))
     ("GPT-5 Mini" . (:api openai :id "gpt-5-mini" :max-tokens "200000"))
     ("GPT-5 Nano" . (:api openai :id "gpt-5-nano" :max-tokens "100000"))
     ("Claude 4.5 Opus" . (:api anthropic :id "claude-opus-4-5" :max-tokens "32000"))
@@ -51,7 +49,7 @@ This is the single source of truth for model definitions."
   :group 'gpt)
 
 ;; Default models for multi-model command
-(defcustom gpt-multi-models-default '("GPT-5.1" "Claude 4.5 Opus" "Gemini 3 Pro (Preview)")
+(defcustom gpt-multi-models-default '("GPT-5.2" "Claude 4.5 Opus" "Gemini 3 Pro (Preview)")
   "Models used by `gpt-chat-multi-models'.
 Use a prefix argument (C-u) to pick models interactively.
 Model names must match keys in `gpt-available-models'."
@@ -105,19 +103,25 @@ NEWVAL is the new value and OPERATION is the kind of change (set/let)."
   :type 'string
   :group 'gpt)
 
-(defcustom gpt-openai-key "NOT SET"
-  "The OpenAI API key to use."
-  :type 'string
+(defcustom gpt-openai-key nil
+  "The OpenAI API key to use.
+Set to nil if not configured."
+  :type '(choice (const :tag "Not set" nil)
+                 (string :tag "API key"))
   :group 'gpt)
 
-(defcustom gpt-anthropic-key "NOT SET"
-  "The Anthropic API key to use."
-  :type 'string
+(defcustom gpt-anthropic-key nil
+  "The Anthropic API key to use.
+Set to nil if not configured."
+  :type '(choice (const :tag "Not set" nil)
+                 (string :tag "API key"))
   :group 'gpt)
 
-(defcustom gpt-google-key "NOT SET"
-  "The Google Gemini API key to use."
-  :type 'string
+(defcustom gpt-google-key nil
+  "The Google Gemini API key to use.
+Set to nil if not configured."
+  :type '(choice (const :tag "Not set" nil)
+                 (string :tag "API key"))
   :group 'gpt)
 
 (defcustom gpt-thinking-enabled t
@@ -207,7 +211,9 @@ inherit markdown syntax highlighting and features."
 (defvar gpt-script-path (expand-file-name "gpt.py" (file-name-directory (or load-file-name buffer-file-name)))
   "The path to the Python script used by gpt.el.")
 
-(add-to-list 'savehist-additional-variables 'gpt-command-history)
+;; Integrate with savehist if available and active
+(when (boundp 'savehist-additional-variables)
+  (add-to-list 'savehist-additional-variables 'gpt-command-history))
 
 (defun gpt-validate-api-key ()
   "Check that the API key for the current `gpt-api-type' is configured.
@@ -215,11 +221,11 @@ Signals a `user-error' with a helpful message if the key is not set."
   (let ((api-key (cond ((eq gpt-api-type 'openai) gpt-openai-key)
                        ((eq gpt-api-type 'anthropic) gpt-anthropic-key)
                        ((eq gpt-api-type 'google) gpt-google-key)
-                       (t "NOT SET")))
+                       (t nil)))
         (key-var (cond ((eq gpt-api-type 'openai) "gpt-openai-key")
                        ((eq gpt-api-type 'anthropic) "gpt-anthropic-key")
                        ((eq gpt-api-type 'google) "gpt-google-key"))))
-    (when (or (null api-key) (string= api-key "NOT SET") (string-empty-p api-key))
+    (when (or (null api-key) (string-empty-p api-key))
       (user-error "API key for %s is not set. Please configure `%s'"
                   (symbol-name gpt-api-type) key-var))))
 

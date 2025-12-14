@@ -75,9 +75,9 @@
     (should (equal "Buffer content here" (gpt-buffer-string (current-buffer))))))
 
 (ert-deftest gpt-start-process-validates-api-key ()
-  "Verify gpt-start-process errors when API key is NOT SET."
+  "Verify gpt-start-process errors when API key is nil."
   (let ((gpt-api-type 'openai)
-        (gpt-openai-key "NOT SET")
+        (gpt-openai-key nil)
         (gpt-script-path (expand-file-name "gpt.py" (file-name-directory (or load-file-name buffer-file-name default-directory)))))
     (with-temp-buffer
       (let ((prompt-file (make-temp-file "gpt-test-")))
