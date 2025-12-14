@@ -438,11 +438,13 @@ With a prefix argument (C-u), prompts to choose models interactively."
             (user-error "Unknown model: %s" model-name))
           (let* ((api-type (plist-get info :api))
                  (model-id (plist-get info :id))
+                 (model-max-tokens (or (plist-get info :max-tokens) "64000"))
+                 (model-thinking-budget (number-to-string (/ (string-to-number model-max-tokens) 3)))
                  ;; Dynamically bind per-run model and settings
                  (gpt-api-type api-type)
-                 (gpt-model model-id))
-            ;; Update derived settings for this model
-            (gpt-update-model-settings)
+                 (gpt-model model-id)
+                 (gpt-max-tokens model-max-tokens)
+                 (gpt-thinking-budget model-thinking-budget))
             (let* ((bufname (gpt--format-command-with-model command model-id))
                    (output-buffer (gpt-create-output-buffer bufname)))
               (if first
