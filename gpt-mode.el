@@ -137,15 +137,18 @@ then specific delimiter lines override the content face.")
 (defun gpt-copy-code-block ()
   "Copy the content of the code block at point to the clipboard."
   (interactive)
-  (let* ((start (if (search-backward "\n```" nil t) (point) nil))
-         (_ (goto-char (or (+ start 3) (point-min))))
-         (end (if (search-forward "\n```" nil t) (point) nil)))
-    (when (and start end)
+  (let ((start (save-excursion
+                 (when (search-backward "\n```" nil t)
+                   (point)))))
+    (unless start
+      (user-error "No code block start fence found"))
+    (goto-char (+ start 3))
+    (let ((end (when (search-forward "\n```" nil t) (point))))
+      (unless end
+        (user-error "No code block end fence found"))
       (let* ((content (buffer-substring-no-properties (+ start 3) (- end 3)))
              (lang-end (string-match "\n" content))
-             (code (if lang-end
-                       (substring content (+ lang-end 1))
-                     content)))
+             (code (if lang-end (substring content (1+ lang-end)) content)))
         (kill-new code)
         (message "Code block copied to clipboard.")))))
 
@@ -332,8 +335,7 @@ integrates with markdown-mode if available."
 (defun gpt--setup-markdown-features ()
   "Set up markdown-specific features for gpt-mode."
   ;; First apply markdown-mode settings
-  (let ((_markdown-inhibit-mode-hooks t))  ; Prevent recursion, unused var
-    (markdown-mode))
+  (markdown-mode)
   ;; Then apply our customizations
   (setq major-mode 'gpt-mode)
   (setq mode-name "GPT")
