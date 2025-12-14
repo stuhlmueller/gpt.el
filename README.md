@@ -4,7 +4,7 @@
   <img src="gpt.gif" alt="gpt.el demo" width="600"/>
 </p>
 
-gpt.el is an Emacs package that lets you interact with instruction-following language models like GPT-5.1, Claude 4.5 Opus, Claude 4.5 Sonnet, and Gemini 3 Pro from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
+gpt.el is an Emacs package that lets you interact with instruction-following language models like GPT-5.2, Claude 4.5 Opus, Claude 4.5 Sonnet, and Gemini 3 Pro from your editor. You can type a natural language command (with history and completion support) and optionally use the current region or buffer contents as input for the model. The package displays the output of the model in a temporary or named buffer, and updates it as the model generates more text. You can issue follow-up commands that provide the interaction history in that buffer as context. You can also browse, save, and clear the command history for later reference.
 
 ## Features
 
@@ -129,6 +129,7 @@ gpt.el supports the latest models from all providers. The built-in models are de
 
 **OpenAI:**
 
+- `gpt-5.2` - GPT-5.2 (400k max tokens)
 - `gpt-5.1` - GPT-5.1 (400k max tokens)
 - `gpt-5-mini` - GPT-5 Mini (200k max tokens)
 - `gpt-5-nano` - GPT-5 Nano (100k max tokens)
