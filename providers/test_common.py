@@ -8,6 +8,7 @@ from .common import (
     Message,
     MissingDependencyError,
     check_dependency,
+    drop_trailing_empty_messages,
     parse_messages,
     validate_api_key,
 )
@@ -107,6 +108,27 @@ Thanks for asking."""
         """Test parsing a prompt with no role markers."""
         messages = parse_messages("Just some text without roles")
         assert len(messages) == 0
+
+    def test_parse_allows_empty_message_body(self) -> None:
+        """A trailing role marker with no content should still be parsed."""
+        prompt = "user: Hello\nassistant:"
+        messages = parse_messages(prompt, {"user", "assistant"})
+        assert len(messages) == 2
+        assert messages[0].role == "user"
+        assert messages[0].content == "Hello"
+        assert messages[1].role == "assistant"
+        assert messages[1].content == ""
+
+
+class TestDropTrailingEmptyMessages:
+    def test_drops_trailing_empty_assistant(self) -> None:
+        messages = [
+            Message(role="user", content="Hello"),
+            Message(role="assistant", content=""),
+        ]
+        trimmed = drop_trailing_empty_messages(messages, {"assistant"})
+        assert len(trimmed) == 1
+        assert trimmed[0].role == "user"
 
 
 class TestCheckDependency:

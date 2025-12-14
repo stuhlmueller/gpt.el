@@ -79,6 +79,23 @@ class TestOpenAIProvider:
         assert "temperature" not in call_args
 
     @patch("providers.openai_provider.openai")
+    def test_call_openai_drops_trailing_empty_assistant(self, mock_openai) -> None:
+        """A trailing 'assistant:' placeholder should not be sent to the API."""
+        mock_client = Mock()
+        mock_openai.OpenAI.return_value = mock_client
+        mock_stream = Mock()
+        mock_client.responses.create.return_value = mock_stream
+
+        prompt = "user: Hello\nassistant:"
+        _ = call_openai(prompt, "test_key", "gpt-4", 100, 0.0)
+
+        call_args = mock_client.responses.create.call_args[1]
+        messages = call_args["input"]
+        assert messages[0]["role"] == "system"
+        assert messages[1]["role"] == "user"
+        assert messages[1]["content"] == "Hello"
+
+    @patch("providers.openai_provider.openai")
     def test_call_openai_with_web_search(self, mock_openai) -> None:
         """Test call_openai with web search enabled."""
         mock_client = Mock()

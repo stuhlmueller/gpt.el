@@ -9,6 +9,7 @@ from .common import (
     APIError,
     InvalidAPIKeyError,
     check_dependency,
+    drop_trailing_empty_messages,
     parse_messages,
     validate_api_key,
 )
@@ -47,6 +48,7 @@ def stream_google(
 
     client = genai.Client(api_key=api_key)
     parsed_messages = parse_messages(prompt, {"user", "human", "assistant", "model"})
+    parsed_messages = drop_trailing_empty_messages(parsed_messages, {"assistant", "model"})
     contents: list[Any]
     if parsed_messages:
         contents = []

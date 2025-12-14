@@ -55,6 +55,36 @@ class TestAnthropicProvider:
         assert messages[2]["content"] == "How are you?"
 
     @patch("providers.anthropic_provider.anthropic")
+    def test_stream_anthropic_drops_trailing_empty_assistant(self, mock_anthropic) -> None:
+        """A trailing 'assistant:' placeholder should not be sent to the API."""
+        mock_client = Mock()
+        mock_anthropic.Anthropic.return_value = mock_client
+        mock_stream = Mock()
+        mock_client.messages.create.return_value = mock_stream
+
+        prompt = "user: Hello\nassistant:"
+        _ = stream_anthropic(prompt, "test_key", "claude-3", 100, 0.0)
+
+        call_args = mock_client.messages.create.call_args[1]
+        messages = call_args["messages"]
+        assert len(messages) == 1
+        assert messages[0]["role"] == "user"
+        assert messages[0]["content"] == "Hello"
+
+    @patch("providers.anthropic_provider.anthropic")
+    def test_stream_anthropic_with_raw_prompt(self, mock_anthropic) -> None:
+        """Raw prompts without roles should still work."""
+        mock_client = Mock()
+        mock_anthropic.Anthropic.return_value = mock_client
+        mock_stream = Mock()
+        mock_client.messages.create.return_value = mock_stream
+
+        _ = stream_anthropic("Hello, world!", "test_key", "claude-3", 100, 0.0)
+
+        call_args = mock_client.messages.create.call_args[1]
+        assert call_args["messages"] == [{"role": "user", "content": "Hello, world!"}]
+
+    @patch("providers.anthropic_provider.anthropic")
     def test_stream_anthropic_with_thinking(self, mock_anthropic) -> None:
         """Test stream_anthropic with thinking enabled."""
         mock_client = Mock()

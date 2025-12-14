@@ -9,6 +9,7 @@ from .common import (
     APIError,
     InvalidAPIKeyError,
     check_dependency,
+    drop_trailing_empty_messages,
     parse_messages,
     validate_api_key,
 )
@@ -70,24 +71,28 @@ def stream_anthropic(
     client = anthropic.Anthropic(api_key=api_key)
 
     parsed_messages = parse_messages(prompt, {"user", "assistant"})
+    parsed_messages = drop_trailing_empty_messages(parsed_messages, {"assistant"})
     messages: list[dict[str, str]] = []
 
-    current_user_content: Optional[str] = None
+    if not parsed_messages:
+        messages = [{"role": "user", "content": prompt}]
+    else:
+        current_user_content: Optional[str] = None
 
-    for msg in parsed_messages:
-        if msg.role == "user":
-            if current_user_content:
-                current_user_content += f"\n\n{msg.content}"
+        for msg in parsed_messages:
+            if msg.role == "user":
+                if current_user_content:
+                    current_user_content += f"\n\n{msg.content}"
+                else:
+                    current_user_content = msg.content
             else:
-                current_user_content = msg.content
-        else:
-            if current_user_content:
-                messages.append({"role": "user", "content": current_user_content})
-                current_user_content = None
-            messages.append({"role": "assistant", "content": msg.content})
+                if current_user_content:
+                    messages.append({"role": "user", "content": current_user_content})
+                    current_user_content = None
+                messages.append({"role": "assistant", "content": msg.content})
 
-    if current_user_content:
-        messages.append({"role": "user", "content": current_user_content})
+        if current_user_content:
+            messages.append({"role": "user", "content": current_user_content})
 
     try:
         if thinking_enabled and max_tokens <= thinking_budget:

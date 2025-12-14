@@ -83,6 +83,26 @@ class TestGoogleProvider:
 
     @patch("providers.google_provider.genai")
     @patch("providers.google_provider.genai_types")
+    def test_stream_google_drops_trailing_empty_model(self, mock_genai_types, mock_genai) -> None:
+        """A trailing 'model:' placeholder should be dropped."""
+        mock_client = Mock()
+        mock_genai.Client.return_value = mock_client
+        mock_chunk = Mock(text="Response")
+        mock_client.models.generate_content_stream.return_value = [mock_chunk]
+
+        mock_genai_types.UserContent = Mock
+        mock_genai_types.ModelContent = Mock
+        mock_genai_types.Part.from_text = Mock(return_value=Mock())
+        mock_genai_types.GenerateContentConfig = Mock
+
+        prompt = "user: Hello\nmodel:"
+        _ = list(stream_google(prompt, "test_key", "gemini-pro", 100, 0.0))
+
+        call_args = mock_client.models.generate_content_stream.call_args[1]
+        assert len(call_args["contents"]) == 1
+
+    @patch("providers.google_provider.genai")
+    @patch("providers.google_provider.genai_types")
     def test_stream_google_max_tokens_limit(self, mock_genai_types, mock_genai) -> None:
         """Test that max_tokens is capped at DEFAULT_GOOGLE_MAX_TOKENS."""
         mock_client = Mock()

@@ -47,7 +47,8 @@ def parse_messages(prompt: str, supported_roles: set[str] | None = None) -> list
         supported_roles = {"user", "assistant", "human", "model"}
 
     role_pattern = "|".join(supported_roles)
-    pattern = re.compile(rf"^({role_pattern}):(.+?)(?=\n(?:{role_pattern}):|\Z)", re.S | re.M | re.I)
+    # Allow empty message bodies (e.g., a trailing "Assistant:" marker).
+    pattern = re.compile(rf"^({role_pattern}):(.*?)(?=\n(?:{role_pattern}):|\Z)", re.S | re.M | re.I)
 
     messages: list[Message] = []
     for match in pattern.finditer(prompt):
@@ -56,6 +57,18 @@ def parse_messages(prompt: str, supported_roles: set[str] | None = None) -> list
         messages.append(Message(role=role, content=content))
 
     return messages
+
+
+def drop_trailing_empty_messages(messages: list[Message], roles: set[str]) -> list[Message]:
+    """Drop trailing messages with empty content for the given ROLES.
+
+    This is primarily used to remove a final "Assistant:" placeholder marker
+    (which gpt.el appends to the prompt file before streaming starts).
+    """
+    trimmed = list(messages)
+    while trimmed and trimmed[-1].role in roles and not trimmed[-1].content.strip():
+        trimmed.pop()
+    return trimmed
 
 
 def check_dependency(module: Any, name: str, install_cmd: str) -> None:

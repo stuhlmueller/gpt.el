@@ -10,6 +10,7 @@ from .common import (
     APIError,
     InvalidAPIKeyError,
     check_dependency,
+    drop_trailing_empty_messages,
     parse_messages,
     validate_api_key,
 )
@@ -70,6 +71,7 @@ def call_openai(
 
     try:
         parsed_messages = parse_messages(prompt, {"user", "assistant", "system"})
+        parsed_messages = drop_trailing_empty_messages(parsed_messages, {"assistant"})
 
         api_input: list[dict[str, str]] | str
         if not parsed_messages:
