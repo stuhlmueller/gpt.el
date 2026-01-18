@@ -344,10 +344,10 @@ WINDOW-CONFIG is the window configuration to restore after editing (optional)."
     (let ((initial-size (with-current-buffer prompt-buffer (point-max))))
       (switch-to-buffer-other-window prompt-buffer)
       (message "GPT edit: generating proposal...")
-      (gpt-run-buffer prompt-buffer)
-      (let ((proc (get-buffer-process prompt-buffer)))
+      ;; gpt-run-buffer returns the process when using curl
+      (let ((proc (gpt-run-buffer prompt-buffer)))
         (unless proc
-          (user-error "Failed to start GPT process"))
+          (user-error "GPT edit requires curl for streaming. Check that curl is installed and `gpt-use-curl' is t"))
         (let ((original-sentinel (process-sentinel proc))
               (finalized nil))
           (set-process-sentinel

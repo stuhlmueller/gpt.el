@@ -108,7 +108,8 @@
 
 (defun gpt-run-buffer (buffer)
   "Run GPT request with BUFFER content as input.
-Appends streaming output to the buffer."
+Appends streaming output to the buffer.
+Returns the request process when using curl, nil otherwise."
   (with-current-buffer buffer
     ;; Kill any existing process
     (when (and gpt--request-process
@@ -181,7 +182,9 @@ Appends streaming output to the buffer."
                  (when-let* ((thinking (plist-get content :thinking)))
                    (gpt--insert-stream-output buffer nil thinking))
                  (gpt--insert-stream-output buffer (plist-get content :content) nil))
-               (gpt--finalize-stream buffer t nil)))))))))
+               (gpt--finalize-stream buffer t nil))))))
+      ;; Return the process (nil if using url-retrieve fallback)
+      gpt--request-process)))
 
 (defun gpt-abort-request (&optional buffer)
   "Abort any active request in BUFFER (default current buffer)."
