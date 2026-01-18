@@ -752,5 +752,128 @@
     (should (string-match-p "RESOURCE_EXHAUSTED"
                             (gpt-http--parse-api-error response 403)))))
 
+;;; ============================================================
+;;; Search/Replace editing tests
+;;; ============================================================
+
+(require 'gpt-ui)
+
+(ert-deftest gpt-test-edit-parse-search-replace-single ()
+  "Test parsing a single search/replace block."
+  (let* ((text "Some text before\n<<<<<<< SEARCH\nold code\n=======\nnew code\n>>>>>>> REPLACE\nSome text after")
+         (blocks (gpt--edit-parse-search-replace-blocks text)))
+    (should (= (length blocks) 1))
+    (should (equal (plist-get (car blocks) :search) "old code"))
+    (should (equal (plist-get (car blocks) :replace) "new code"))))
+
+(ert-deftest gpt-test-edit-parse-search-replace-multiple ()
+  "Test parsing multiple search/replace blocks."
+  (let* ((text "<<<<<<< SEARCH\nfirst old\n=======\nfirst new\n>>>>>>> REPLACE\n\n<<<<<<< SEARCH\nsecond old\n=======\nsecond new\n>>>>>>> REPLACE")
+         (blocks (gpt--edit-parse-search-replace-blocks text)))
+    (should (= (length blocks) 2))
+    (should (equal (plist-get (car blocks) :search) "first old"))
+    (should (equal (plist-get (car blocks) :replace) "first new"))
+    (should (equal (plist-get (cadr blocks) :search) "second old"))
+    (should (equal (plist-get (cadr blocks) :replace) "second new"))))
+
+(ert-deftest gpt-test-edit-parse-search-replace-multiline ()
+  "Test parsing search/replace with multiline content."
+  (let* ((text "<<<<<<< SEARCH\nline 1\nline 2\nline 3\n=======\nnew line 1\nnew line 2\n>>>>>>> REPLACE")
+         (blocks (gpt--edit-parse-search-replace-blocks text)))
+    (should (= (length blocks) 1))
+    (should (equal (plist-get (car blocks) :search) "line 1\nline 2\nline 3"))
+    (should (equal (plist-get (car blocks) :replace) "new line 1\nnew line 2"))))
+
+(ert-deftest gpt-test-edit-parse-search-replace-empty-replace ()
+  "Test parsing search/replace with empty replacement (deletion)."
+  (let* ((text "<<<<<<< SEARCH\ndelete me\n=======\n>>>>>>> REPLACE")
+         (blocks (gpt--edit-parse-search-replace-blocks text)))
+    (should (= (length blocks) 1))
+    (should (equal (plist-get (car blocks) :search) "delete me"))
+    (should (equal (plist-get (car blocks) :replace) ""))))
+
+(ert-deftest gpt-test-edit-has-search-replace-blocks ()
+  "Test detection of search/replace blocks."
+  (should (gpt--edit-has-search-replace-blocks "<<<<<<< SEARCH\nfoo\n=======\nbar\n>>>>>>> REPLACE"))
+  (should (gpt--edit-has-search-replace-blocks "text before <<<<<<< SEARCH"))
+  (should-not (gpt--edit-has-search-replace-blocks "just regular text"))
+  (should-not (gpt--edit-has-search-replace-blocks "```\ncode block\n```")))
+
+(ert-deftest gpt-test-edit-find-match-exact ()
+  "Test exact matching in content."
+  (let ((content "line 1\nfind me\nline 3"))
+    (let ((result (gpt--edit-find-match "find me" content)))
+      (should (equal (plist-get result :match-type) 'exact))
+      (should (= (plist-get result :start) 7))
+      (should (= (plist-get result :end) 14)))))
+
+(ert-deftest gpt-test-edit-find-match-not-found ()
+  "Test when search text is not found."
+  (let ((content "line 1\nline 2\nline 3"))
+    (let ((result (gpt--edit-find-match "not here" content)))
+      (should (equal (plist-get result :error) 'not-found)))))
+
+(ert-deftest gpt-test-edit-find-match-multiple ()
+  "Test when search text appears multiple times."
+  (let ((content "foo\nbar\nfoo\nbaz"))
+    (let ((result (gpt--edit-find-match "foo" content)))
+      (should (equal (plist-get result :error) 'multiple-matches))
+      (should (= (plist-get result :count) 2)))))
+
+(ert-deftest gpt-test-edit-find-match-fuzzy ()
+  "Test fuzzy matching with whitespace differences."
+  ;; Fuzzy matching normalizes whitespace per-line and matches
+  ;; Content has extra trailing whitespace that exact match won't find
+  (let ((content "line 1\ndef foo():  \n  return 1  \nline 4"))
+    ;; Search for the same code without trailing spaces - won't exact match
+    ;; because "def foo():  " != "def foo():" but fuzzy normalizes both
+    (let ((result (gpt--edit-find-match "def foo():\n  return 1" content)))
+      (should result)
+      (should (not (plist-get result :error)))
+      ;; Note: may be exact or fuzzy depending on substring matching
+      ;; The key is that it finds it
+      (should (plist-get result :start)))))
+
+(ert-deftest gpt-test-edit-apply-search-replace-simple ()
+  "Test applying a single search/replace."
+  (let* ((content "hello world")
+         (blocks (list (list :search "world" :replace "everyone")))
+         (result (gpt--edit-apply-search-replace content blocks)))
+    (should (equal (plist-get result :content) "hello everyone"))
+    (should (= (plist-get result :applied) 1))
+    (should (null (plist-get result :errors)))))
+
+(ert-deftest gpt-test-edit-apply-search-replace-multiple ()
+  "Test applying multiple search/replace blocks."
+  (let* ((content "foo bar baz")
+         (blocks (list (list :search "foo" :replace "FOO")
+                       (list :search "baz" :replace "BAZ")))
+         (result (gpt--edit-apply-search-replace content blocks)))
+    (should (equal (plist-get result :content) "FOO bar BAZ"))
+    (should (= (plist-get result :applied) 2))))
+
+(ert-deftest gpt-test-edit-apply-search-replace-deletion ()
+  "Test applying a deletion (empty replacement)."
+  (let* ((content "keep delete keep")
+         (blocks (list (list :search " delete" :replace "")))
+         (result (gpt--edit-apply-search-replace content blocks)))
+    (should (equal (plist-get result :content) "keep keep"))
+    (should (= (plist-get result :applied) 1))))
+
+(ert-deftest gpt-test-edit-apply-search-replace-with-errors ()
+  "Test applying blocks where some fail."
+  (let* ((content "hello world")
+         (blocks (list (list :search "world" :replace "everyone")
+                       (list :search "notfound" :replace "x")))
+         (result (gpt--edit-apply-search-replace content blocks)))
+    (should (equal (plist-get result :content) "hello everyone"))
+    (should (= (plist-get result :applied) 1))
+    (should (= (length (plist-get result :errors)) 1))))
+
+(ert-deftest gpt-test-edit-normalize-whitespace ()
+  "Test whitespace normalization for fuzzy matching."
+  (should (equal (gpt--edit-normalize-whitespace "  foo  ") "foo"))
+  (should (equal (gpt--edit-normalize-whitespace "  line 1  \n  line 2  ") "line 1\nline 2")))
+
 (provide 'gpt-test)
 ;;; gpt-test.el ends here

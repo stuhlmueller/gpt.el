@@ -133,6 +133,160 @@ If no code fence is found, return TEXT trimmed."
       (setq clean (substring clean 0 (match-beginning 0)))))
     clean))
 
+;;; Search/Replace block editing
+
+(defun gpt--edit-parse-search-replace-blocks (text)
+  "Parse TEXT for SEARCH/REPLACE blocks.
+Returns a list of plists with :search and :replace keys.
+Format expected:
+<<<<<<< SEARCH
+old code
+=======
+new code
+>>>>>>> REPLACE"
+  (let ((blocks '())
+        (pos 0)
+        (pattern (concat "<<<<<<+[ \t]*SEARCH[ \t]*\n"
+                         "\\(\\(?:.*\n\\)*?\\)"
+                         "=======*[ \t]*\n"
+                         "\\(\\(?:.*\n\\)*?\\)"
+                         ">>>>>>>+[ \t]*REPLACE")))
+    (while (string-match pattern text pos)
+      (let ((search-text (match-string 1 text))
+            (replace-text (match-string 2 text)))
+        ;; Remove trailing newline from search (but keep internal structure)
+        (when (string-suffix-p "\n" search-text)
+          (setq search-text (substring search-text 0 -1)))
+        ;; Remove trailing newline from replace
+        (when (string-suffix-p "\n" replace-text)
+          (setq replace-text (substring replace-text 0 -1)))
+        (push (list :search search-text :replace replace-text) blocks))
+      (setq pos (match-end 0)))
+    (nreverse blocks)))
+
+(defun gpt--edit-has-search-replace-blocks (text)
+  "Return non-nil if TEXT contains SEARCH/REPLACE blocks."
+  (string-match-p "<<<<<<+[ \t]*SEARCH" text))
+
+(defun gpt--edit-normalize-whitespace (text)
+  "Normalize TEXT for fuzzy matching by collapsing whitespace."
+  (let ((normalized text))
+    ;; Trim each line
+    (setq normalized
+          (mapconcat (lambda (line) (string-trim line))
+                     (split-string normalized "\n")
+                     "\n"))
+    ;; Trim overall
+    (string-trim normalized)))
+
+(defun gpt--edit-find-match (search-text content)
+  "Find SEARCH-TEXT in CONTENT.
+Returns a plist with :start, :end, and :match-type keys.
+:match-type is \\='exact or \\='fuzzy.
+Returns nil if no unique match found."
+  (let ((exact-matches '())
+        (pos 0))
+    ;; Try exact match first
+    (while (setq pos (string-match (regexp-quote search-text) content pos))
+      (push pos exact-matches)
+      (setq pos (1+ pos)))
+    (cond
+     ;; Exactly one exact match
+     ((= (length exact-matches) 1)
+      (list :start (car exact-matches)
+            :end (+ (car exact-matches) (length search-text))
+            :match-type 'exact))
+     ;; Multiple exact matches - ambiguous
+     ((> (length exact-matches) 1)
+      (list :error 'multiple-matches
+            :count (length exact-matches)))
+     ;; No exact match - try fuzzy
+     (t
+      (let* ((fuzzy-matches '())
+             (normalized-search (gpt--edit-normalize-whitespace search-text))
+             (lines (split-string content "\n"))
+             (search-line-count (length (split-string search-text "\n"))))
+        ;; Slide a window over the content lines
+        (cl-loop for i from 0 to (- (length lines) search-line-count)
+                 do (let* ((window (cl-subseq lines i (+ i search-line-count)))
+                           (window-text (mapconcat #'identity window "\n"))
+                           (normalized-window (gpt--edit-normalize-whitespace window-text)))
+                      (when (string= normalized-search normalized-window)
+                        (push (list :line-start i :line-count search-line-count
+                                    :original-text window-text)
+                              fuzzy-matches))))
+        (cond
+         ;; Exactly one fuzzy match
+         ((= (length fuzzy-matches) 1)
+          (let* ((match (car fuzzy-matches))
+                 (line-start (plist-get match :line-start))
+                 (before-lines (cl-subseq lines 0 line-start))
+                 (start-pos (+ (apply #'+ (mapcar #'length before-lines))
+                               line-start)) ; account for newlines
+                 (matched-text (plist-get match :original-text)))
+            (list :start start-pos
+                  :end (+ start-pos (length matched-text))
+                  :match-type 'fuzzy
+                  :original-text matched-text)))
+         ;; Multiple fuzzy matches
+         ((> (length fuzzy-matches) 1)
+          (list :error 'multiple-matches
+                :count (length fuzzy-matches)
+                :match-type 'fuzzy))
+         ;; No match at all
+         (t
+          (list :error 'not-found))))))))
+
+(defun gpt--edit-apply-search-replace (content blocks)
+  "Apply SEARCH/REPLACE BLOCKS to CONTENT.
+Returns a plist with :content (new content) and :errors (list of failed blocks)."
+  (let ((result content)
+        (errors '())
+        (applied 0))
+    (dolist (block blocks)
+      (let* ((search-text (plist-get block :search))
+             (replace-text (plist-get block :replace))
+             (match (gpt--edit-find-match search-text result)))
+        (cond
+         ;; Successful match
+         ((and match (not (plist-get match :error)))
+          (let ((start (plist-get match :start))
+                (end (plist-get match :end)))
+            (setq result (concat (substring result 0 start)
+                                 replace-text
+                                 (substring result end)))
+            (setq applied (1+ applied))))
+         ;; Error
+         (t
+          (push (list :block block :error match) errors)))))
+    (list :content result
+          :errors (nreverse errors)
+          :applied applied)))
+
+(defun gpt--edit-format-apply-errors (errors)
+  "Format ERRORS from search/replace application for display."
+  (mapconcat
+   (lambda (err)
+     (let* ((block (plist-get err :block))
+            (error-info (plist-get err :error))
+            (search-text (plist-get block :search))
+            (preview (if (> (length search-text) 60)
+                         (concat (substring search-text 0 57) "...")
+                       search-text)))
+       (pcase (plist-get error-info :error)
+         ('multiple-matches
+          (format "- Multiple matches (%d) for: %s"
+                  (plist-get error-info :count)
+                  (replace-regexp-in-string "\n" "\\\\n" preview)))
+         ('not-found
+          (format "- Not found: %s"
+                  (replace-regexp-in-string "\n" "\\\\n" preview)))
+         (_
+          (format "- Unknown error for: %s"
+                  (replace-regexp-in-string "\n" "\\\\n" preview))))))
+   errors
+   "\n"))
+
 (defun gpt--edit-generate-diff (original-text new-content)
   "Generate diff between ORIGINAL-TEXT and NEW-CONTENT.
 Returns a plist with :exit-code and :diff-buffer keys.
@@ -243,10 +397,31 @@ WINDOW-CONFIG is the window configuration to restore after editing."
       (message "GPT edit returned no content.")
       (cl-return-from gpt--finalize-edit))
 
-    ;; Process content and check for changes
-    (let* ((extracted (gpt--edit-extract-code-block raw-output))
-           (new-content (string-trim (gpt--edit-strip-code-fences extracted)))
-           (reran nil))
+    ;; Detect format: search/replace blocks or full file replacement
+    (let* ((has-search-replace (gpt--edit-has-search-replace-blocks raw-output))
+           new-content
+           apply-errors
+           reran)
+
+      (if has-search-replace
+          ;; Search/replace mode
+          (let* ((blocks (gpt--edit-parse-search-replace-blocks raw-output))
+                 (result (gpt--edit-apply-search-replace original-text blocks))
+                 (errors (plist-get result :errors))
+                 (applied (plist-get result :applied)))
+            (setq new-content (plist-get result :content))
+            (setq apply-errors errors)
+            (message "GPT edit: parsed %d search/replace blocks, applied %d."
+                     (length blocks) applied)
+            (when errors
+              (message "GPT edit: %d blocks failed to apply." (length errors))))
+
+        ;; Full file replacement mode
+        (let* ((extracted (gpt--edit-extract-code-block raw-output))
+               (content (string-trim (gpt--edit-strip-code-fences extracted))))
+          (setq new-content content)
+          (message "GPT edit: using full file replacement mode.")))
+
       ;; Preserve trailing newline if original had one
       (when (and (string-suffix-p "\n" original-text)
                  (not (string-suffix-p "\n" new-content)))
@@ -273,6 +448,14 @@ WINDOW-CONFIG is the window configuration to restore after editing."
                 (when window-config
                   (set-window-configuration window-config))
                 (message "GPT edit: diff produced no changes."))
+
+            ;; Show errors if any blocks failed
+            (when apply-errors
+              (with-current-buffer diff-buffer
+                (goto-char (point-max))
+                (insert "\n\n--- Search/Replace Errors ---\n"
+                        (gpt--edit-format-apply-errors apply-errors)
+                        "\n")))
 
             ;; Display diff and prompt for user action
             (display-buffer diff-buffer)
@@ -322,12 +505,22 @@ WINDOW-CONFIG is the window configuration to restore after editing (optional)."
          (prompt (concat
                   "User:\n\n"
                   (format
-                   "You are editing the Emacs buffer \"%s\" (File: %s).\n"
+                   "You are editing the Emacs buffer \"%s\" (File: %s).\n\n"
                    buffer-title file-path)
-                  "Rewrite the entire buffer exactly once so it satisfies the instruction while leaving unrelated content unchanged.\n"
+                  "Choose ONE of these response formats based on the scope of changes:\n\n"
+                  "**For small, targeted changes** (preferred when possible): Use SEARCH/REPLACE blocks:\n"
+                  "```\n"
+                  "<<<<<<< SEARCH\n"
+                  "exact code to find\n"
+                  "=======\n"
+                  "replacement code\n"
+                  ">>>>>>> REPLACE\n"
+                  "```\n"
+                  "You can include multiple SEARCH/REPLACE blocks. The SEARCH text must match exactly (including whitespace).\n\n"
                   (format
-                   "Return only the complete updated buffer enclosed in a ```%s``` fenced code block with no commentary outside the fence.\n\n"
+                   "**For extensive changes**: Return the complete updated buffer in a ```%s``` code block.\n\n"
                    language)
+                  "Important: Do NOT mix formats. Use either SEARCH/REPLACE blocks OR a full file replacement, not both.\n\n"
                   "<instruction>\n"
                   effective-command
                   "\n</instruction>\n"
