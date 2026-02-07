@@ -44,6 +44,9 @@
 
 (require 'gpt-core)
 (require 'gpt-backend)
+(require 'gpt-openai)
+(require 'gpt-anthropic)
+(require 'gpt-google)
 (require 'gpt-http)
 (require 'gpt-api)
 (require 'gpt-ui)

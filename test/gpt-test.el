@@ -877,5 +877,43 @@
   (should (equal (gpt--edit-normalize-whitespace "  foo  ") "foo"))
   (should (equal (gpt--edit-normalize-whitespace "  line 1  \n  line 2  ") "line 1\nline 2")))
 
+;;; ============================================================
+;;; Method dispatch tests (ensures all backend methods are registered)
+;;; ============================================================
+
+(require 'gpt)
+
+(ert-deftest gpt-test-all-backend-methods-registered ()
+  "Verify that loading gpt.el registers all backend method specializations.
+This catches the class of bug where backend modules are not eagerly loaded,
+causing cl-no-applicable-method errors at runtime."
+  (let ((gpt-openai-key "test")
+        (gpt-anthropic-key "test")
+        (gpt-google-key "test")
+        (gpt-thinking-enabled nil)
+        (gpt-thinking-budget 10000)
+        (gpt-interleaved-thinking nil)
+        (gpt-web-search nil)
+        (gpt-backends nil))
+    ;; Test each provider's full method chain
+    (dolist (provider '(openai anthropic google))
+      (let* ((backend (gpt-get-backend provider))
+             (messages '((:role "user" :content "test")))
+             (options '(:model "test" :max-tokens 100 :thinking-enabled nil)))
+        ;; All four generic methods must dispatch without error
+        (should (gpt-backend-headers backend))
+        (should (gpt-backend-request-data backend messages options))
+        (should (gpt-backend-stream-request-data backend messages options))))))
+
+(ert-deftest gpt-test-anthropic-stream-method-dispatch ()
+  "Verify gpt-backend-stream-request-data dispatches for Anthropic backends.
+Regression test for cl-no-applicable-method bug caused by lazy loading."
+  (let* ((backend (gpt-anthropic-create "test-key" :thinking-enabled nil))
+         (messages '((:role "user" :content "hello")))
+         (options '(:model "claude-opus-4-6" :max-tokens 32000 :thinking-enabled nil))
+         (data (gpt-backend-stream-request-data backend messages options)))
+    (should (eq (plist-get data :stream) t))
+    (should (equal (plist-get data :model) "claude-opus-4-6"))))
+
 (provide 'gpt-test)
 ;;; gpt-test.el ends here
