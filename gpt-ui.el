@@ -606,7 +606,7 @@ If there is an active region, append as \"Selected region:\"."
   "Get the output buffer name for a given COMMAND."
   (let* ((truncated-command (substring command 0 (min gpt-buffer-name-length (length command))))
          (ellipsis (if (< (length truncated-command) (length command)) "..." "")))
-    (concat "*gpt"
+    (concat "*" gpt-model
             "[" (number-to-string gpt-buffer-counter) "]: "
             truncated-command
             ellipsis
