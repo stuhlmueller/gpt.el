@@ -8,6 +8,12 @@ CLAUDE.md
 # Generated files
 repomix*
 
+# Python (legacy)
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+
 # Emacs
 *.elc
 .emacs-packages/
