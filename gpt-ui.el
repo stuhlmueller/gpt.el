@@ -165,7 +165,7 @@ new code
     (nreverse blocks)))
 
 (defun gpt--edit-has-search-replace-blocks (text)
-  "Return non-nil if TEXT contains SEARCH/REPLACE blocks."
+  "Return non-nil if TEXT has SEARCH/REPLACE blocks."
   (string-match-p "<<<<<<+[ \t]*SEARCH" text))
 
 (defun gpt--edit-normalize-whitespace (text)
@@ -337,8 +337,11 @@ Creates an undo boundary so changes can be reverted with \\[undo]."
 
 (defun gpt--edit-handle-choice (choice source-buffer prompt-buffer new-content
                                        original-text base-command history window-config)
-  "Handle user CHOICE (y/n/f) for GPT edit.
-Returns t if the edit should be rerun with feedback."
+  "Handle user CHOICE (y/n/f) for GPT edit on SOURCE-BUFFER.
+PROMPT-BUFFER holds the GPT conversation, NEW-CONTENT is the proposed text.
+ORIGINAL-TEXT is the pre-edit content, BASE-COMMAND the initial instruction.
+HISTORY is prior feedback strings, WINDOW-CONFIG the layout to restore.
+Return t if the edit should be rerun with feedback."
   (pcase choice
     ((or ?y ?Y)
      (when (buffer-live-p prompt-buffer)
@@ -540,7 +543,7 @@ WINDOW-CONFIG is the window configuration to restore after editing (optional)."
       ;; gpt-run-buffer returns the process when using curl
       (let ((proc (gpt-run-buffer prompt-buffer)))
         (unless proc
-          (user-error "GPT edit requires curl for streaming. Check that curl is installed and `gpt-use-curl' is t"))
+          (user-error "GPT edit requires curl for streaming.  Check that curl is installed and `gpt-use-curl' is t"))
         (let ((original-sentinel (process-sentinel proc))
               (finalized nil))
           (set-process-sentinel
@@ -650,13 +653,9 @@ CONTEXT-MODE can be one of:
 - \\='current-buffer: Use current buffer as context
 - nil or \\='none: Use no buffer context
 
-By default, uses `gpt-multi-models-default' without prompting.
-With a prefix argument (C-u), prompts to choose models interactively.
-
-Example usage:
-  M-x gpt-chat-multi-models RET current-buffer RET
-  C-u M-x gpt-chat-multi-models    ; Interactive model selection
-  (gpt-chat-multi-models \\='current-buffer)  ; From Lisp
+When PROMPT-FOR-MODELS is non-nil, prompt to choose models interactively;
+otherwise use `gpt-multi-models-default'.  With \\[universal-argument],
+prompts interactively.
 
 The command will create separate output buffers for each model,
 allowing you to compare responses side-by-side."
@@ -715,7 +714,7 @@ prompt marker, ready for GPT to generate a response."
 
 ;;;###autoload
 (defun gpt-edit-current-buffer ()
-  "Rewrite the current buffer via GPT and apply changes after review."
+  "Rewrite the current buffer via GPT and show a diff for review."
   (interactive)
   (gpt-validate-api-key)
   (let* ((raw-command (gpt-read-command 'current-buffer t))

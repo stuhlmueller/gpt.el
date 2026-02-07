@@ -73,7 +73,7 @@ If STREAM is non-nil, build streaming URL."
 
 (cl-defmethod gpt-backend-request-data ((backend gpt-google-backend)
                                         messages options)
-  "Build request data for Google API.
+  "Build request data for Google API using BACKEND settings.
 MESSAGES is a list of message plists.
 OPTIONS is a plist with :model, :max-tokens, :temperature, etc."
   (let* ((model (or (plist-get options :model)
@@ -99,7 +99,8 @@ OPTIONS is a plist with :model, :max-tokens, :temperature, etc."
 
 (cl-defmethod gpt-backend-stream-request-data ((backend gpt-google-backend)
                                                messages options)
-  "Build streaming request data for Google API."
+  "Build streaming request data for Google API from BACKEND.
+MESSAGES and OPTIONS are as in `gpt-backend-request-data'."
   ;; Google streaming is via URL, not request body
   (gpt-backend-request-data backend messages options))
 

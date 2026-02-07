@@ -114,9 +114,9 @@ Returns the request process when using curl, nil otherwise."
     ;; Kill any existing process
     (when (and gpt--request-process
                (process-live-p gpt--request-process))
-      (if (y-or-n-p "A GPT process is running here. Kill it and start a new one? ")
+      (if (y-or-n-p "A GPT process is running here.  Kill it and start a new one? ")
           (delete-process gpt--request-process)
-        (user-error "Aborted. Existing GPT process is still running")))
+        (user-error "Aborted.  Existing GPT process is still running")))
     ;; Validate API key
     (gpt-validate-api-key)
     ;; Ensure we have a valid backend (not just non-nil, but correct type)

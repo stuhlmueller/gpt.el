@@ -195,7 +195,7 @@ RETRY-COUNT is internal for retry logic."
 URL is the API endpoint.
 HEADERS is an alist of HTTP headers.
 DATA is the request body (plist).
-BACKEND is the gpt-backend instance for parsing.
+BACKEND is a symbol `gpt-backend' instance for parsing.
 ON-CHUNK is called with (CONTENT THINKING) for each chunk.
 ON-COMPLETE is called with (SUCCESS ERROR-MSG) when done."
   (let* ((json-data (encode-coding-string

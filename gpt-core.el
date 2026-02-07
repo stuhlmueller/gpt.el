@@ -26,6 +26,19 @@
 (declare-function gpt-anthropic-create "gpt-anthropic" (api-key &rest args))
 (declare-function gpt-google-create "gpt-google" (api-key))
 
+;; Forward declarations for variables defined later in this file.
+;; These are needed because `gpt--create-backend', `gpt--current-api-type',
+;; and `gpt-update-model-settings' reference them before the defcustom forms.
+(defvar gpt-openai-key)
+(defvar gpt-anthropic-key)
+(defvar gpt-google-key)
+(defvar gpt-thinking-enabled)
+(defvar gpt-interleaved-thinking)
+(defvar gpt-web-search)
+(defvar gpt-model)
+(defvar gpt-max-tokens)
+(defvar gpt-thinking-budget)
+
 ;;; Customization group
 
 (defgroup gpt nil
@@ -37,7 +50,7 @@
 
 (defvar gpt-current-backend nil
   "The current backend instance for API calls.
-This is an object of type `gpt-backend' or its subclasses.")
+This is an instance of symbol `gpt-backend' or one of its subclasses.")
 
 (defvar gpt-backends nil
   "Alist of available backends keyed by provider symbol.
@@ -276,7 +289,7 @@ NEWVAL is the new value and OPERATION is the kind of change (set/let)."
                     ('anthropic "gpt-anthropic-key")
                     ('google "gpt-google-key"))))
     (when (or (null api-key) (string-empty-p api-key))
-      (user-error "API key for %s is not set. Please configure `%s'"
+      (user-error "API key for %s is not set.  Please configure `%s'"
                   (symbol-name api-type) key-var))))
 
 ;;; History functions
@@ -320,7 +333,7 @@ and INHERIT-INPUT-METHOD have the same meaning as for `completing-read'."
 
 ;; Keep derived settings in sync when gpt-model changes
 (defvar gpt--model-watcher-installed nil
-  "Whether the gpt-model watcher has been installed.")
+  "Whether the `gpt-model' watcher has been installed.")
 
 (when (and (fboundp 'add-variable-watcher)
            (not gpt--model-watcher-installed))

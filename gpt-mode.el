@@ -28,6 +28,7 @@
 (declare-function gpt-read-command "gpt-ui" (context-mode use-selection))
 (declare-function gpt-abort-request "gpt-api" (&optional buffer))
 (declare-function gpt-google--build-url "gpt-google" (backend model &optional stream))
+(declare-function gpt-http--url-request "gpt-http" (url headers data callback))
 
 (defcustom gpt-enable-word-wrap t
   "Whether to enable word wrapping in GPT buffers.
@@ -79,7 +80,7 @@ Used for [Searching for: ...] and [Got web search results]."
      (1 'font-lock-constant-face))))
 
 (defvar gpt--old-font-lock-keywords gpt-font-lock-keywords
-  "Original gpt-font-lock-keywords for User/Assistant and code blocks.")
+  "Original `gpt-font-lock-keywords' for User/Assistant and code blocks.")
 
 (defun gpt--font-lock-scan-thinking-content (limit)
   "Scan for gpt thinking content up to LIMIT and set match data.
@@ -253,9 +254,9 @@ then specific delimiter lines override the content face.")
                  (kill-buffer temp-buffer))))))))))
 
 (defun gpt-chat-clipboard ()
-  "Run a GPT command using the current clipboard/kill-ring content as context.
-Prompts for a command, creates a new GPT output buffer, inserts the
-clipboard content as context, and runs GPT to generate a response.
+  "Run a GPT command using the current clipboard/`kill-ring' content as context.
+Prompt for a command, create a new GPT output buffer, insert the
+clipboard content as context, and run GPT to generate a response.
 Useful for quickly processing text copied from other applications."
   (interactive)
   (gpt-validate-api-key)
@@ -344,7 +345,7 @@ integrates with markdown-mode if available."
 (defvar markdown-fontify-code-blocks-natively)
 
 (defun gpt--setup-markdown-features ()
-  "Set up markdown-specific features for gpt-mode."
+  "Set up markdown-specific features for `gpt-mode'."
   ;; First apply markdown-mode settings
   (markdown-mode)
   ;; Then apply our customizations
@@ -369,7 +370,7 @@ integrates with markdown-mode if available."
   (use-local-map gpt-mode-map))
 
 (defun gpt--setup-basic-features ()
-  "Set up basic `text-mode' features for gpt-mode."
+  "Set up basic `text-mode' features for `gpt-mode'."
   (setq-local font-lock-defaults '(gpt-font-lock-keywords nil t))
   (font-lock-mode 1)
   (font-lock-ensure))
@@ -389,7 +390,7 @@ Set to nil when spinner is inactive or when timer is cancelled.")
 
 (defvar-local gpt--spinner-index 0
   "Current frame index in the spinner animation sequence.
-Cycles through indices 0 to (length gpt--spinner-frames) - 1.")
+Cycles through indices 0 to (length `gpt--spinner-frames') - 1.")
 
 (defvar-local gpt--spinner-string ""
   "Current spinner character string displayed in the mode line.

@@ -45,13 +45,13 @@
 ;;; Implementation of generic methods
 
 (cl-defmethod gpt-backend-headers ((backend gpt-openai-backend))
-  "Return HTTP headers for OpenAI requests."
+  "Return HTTP headers for OpenAI requests using BACKEND key."
   (list (cons "Authorization"
               (format "Bearer %s" (oref backend key)))))
 
 (cl-defmethod gpt-backend-request-data ((backend gpt-openai-backend)
                                         messages options)
-  "Build request data for OpenAI API.
+  "Build request data for OpenAI API using BACKEND settings.
 MESSAGES is a list of message plists.
 OPTIONS is a plist with :model, :max-tokens, :temperature, etc."
   (let* ((model (or (plist-get options :model)
@@ -82,7 +82,8 @@ OPTIONS is a plist with :model, :max-tokens, :temperature, etc."
 
 (cl-defmethod gpt-backend-stream-request-data ((backend gpt-openai-backend)
                                                messages options)
-  "Build streaming request data for OpenAI API."
+  "Build streaming request data for OpenAI API from BACKEND.
+MESSAGES and OPTIONS are as in `gpt-backend-request-data'."
   (let ((data (gpt-backend-request-data backend messages options)))
     (plist-put data :stream t)))
 

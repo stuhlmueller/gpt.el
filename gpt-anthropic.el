@@ -61,7 +61,7 @@
 ;;; Implementation of generic methods
 
 (cl-defmethod gpt-backend-headers ((backend gpt-anthropic-backend))
-  "Return HTTP headers for Anthropic requests."
+  "Return HTTP headers for Anthropic requests using BACKEND settings."
   (let ((headers
          (list (cons "x-api-key" (oref backend key))
                (cons "anthropic-version" (oref backend api-version)))))
@@ -72,7 +72,7 @@
 
 (cl-defmethod gpt-backend-request-data ((backend gpt-anthropic-backend)
                                         messages options)
-  "Build request data for Anthropic API.
+  "Build request data for Anthropic API using BACKEND settings.
 MESSAGES is a list of message plists.
 OPTIONS is a plist with :model, :max-tokens, :temperature, etc."
   (let* ((model (or (plist-get options :model)
@@ -120,7 +120,8 @@ OPTIONS is a plist with :model, :max-tokens, :temperature, etc."
 
 (cl-defmethod gpt-backend-stream-request-data ((backend gpt-anthropic-backend)
                                                messages options)
-  "Build streaming request data for Anthropic API."
+  "Build streaming request data for Anthropic API from BACKEND.
+MESSAGES and OPTIONS are as in `gpt-backend-request-data'."
   (let ((data (gpt-backend-request-data backend messages options)))
     (plist-put data :stream t)))
 
