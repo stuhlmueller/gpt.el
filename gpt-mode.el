@@ -418,14 +418,17 @@ Set by `gpt--start-spinner' and cleared by `gpt--stop-spinner'.")
   (when (timerp gpt--spinner-timer)
     (cancel-timer gpt--spinner-timer)
     (setq gpt--spinner-timer nil))
-  (setq gpt--spinner-timer
-        (run-with-timer 0 gpt-mode-line-spinner-interval
-                        (lambda ()
-                          (when (and (buffer-live-p (current-buffer)) gpt--spinner-active)
-                            (setq gpt--spinner-index (mod (1+ gpt--spinner-index)
-                                                          (length gpt--spinner-frames)))
-                            (setq gpt--spinner-string (aref gpt--spinner-frames gpt--spinner-index))
-                            (force-mode-line-update t))))))
+  (let ((buf (current-buffer)))
+    (setq gpt--spinner-timer
+          (run-with-timer 0 gpt-mode-line-spinner-interval
+                          (lambda ()
+                            (when (buffer-live-p buf)
+                              (with-current-buffer buf
+                                (when gpt--spinner-active
+                                  (setq gpt--spinner-index (mod (1+ gpt--spinner-index)
+                                                                (length gpt--spinner-frames)))
+                                  (setq gpt--spinner-string (aref gpt--spinner-frames gpt--spinner-index))
+                                  (force-mode-line-update t)))))))))
 
 (defun gpt--stop-spinner ()
   "Stop the mode-line spinner in the current GPT buffer."
