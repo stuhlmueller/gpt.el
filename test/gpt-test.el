@@ -557,7 +557,7 @@
   (should (eq (gpt--get-model-api "gpt-5.2") 'openai))
   (should (eq (gpt--get-model-api "gpt-5.1") 'openai))
   (should (eq (gpt--get-model-api "gpt-5-mini") 'openai))
-  (should (eq (gpt--get-model-api "claude-opus-4-5") 'anthropic))
+  (should (eq (gpt--get-model-api "claude-opus-4-6") 'anthropic))
   (should (eq (gpt--get-model-api "claude-sonnet-4-5") 'anthropic))
   (should (eq (gpt--get-model-api "gemini-3-pro-preview") 'google)))
 
@@ -567,11 +567,11 @@
 
 (ert-deftest gpt-test-model-max-tokens ()
   "Test looking up max tokens from model ID."
-  (should (equal (gpt--model-max-tokens "gpt-5.2") "400000"))
-  (should (equal (gpt--model-max-tokens "gpt-5-mini") "200000"))
-  (should (equal (gpt--model-max-tokens "claude-opus-4-5") "32000"))
-  (should (equal (gpt--model-max-tokens "claude-sonnet-4-5") "64000"))
-  (should (equal (gpt--model-max-tokens "gemini-3-pro-preview") "60000")))
+  (should (equal (gpt--model-max-tokens "gpt-5.2") 400000))
+  (should (equal (gpt--model-max-tokens "gpt-5-mini") 200000))
+  (should (equal (gpt--model-max-tokens "claude-opus-4-6") 32000))
+  (should (equal (gpt--model-max-tokens "claude-sonnet-4-5") 64000))
+  (should (equal (gpt--model-max-tokens "gemini-3-pro-preview") 60000)))
 
 (ert-deftest gpt-test-model-max-tokens-unknown ()
   "Test looking up max tokens for unknown model."
@@ -645,7 +645,7 @@
         (gpt-anthropic-key "anthropic-key")
         (gpt-google-key "google-key")
         (gpt-thinking-enabled nil)
-        (gpt-thinking-budget "10000")
+        (gpt-thinking-budget 10000)
         (gpt-interleaved-thinking nil)
         (gpt-web-search nil)
         (gpt-backends nil))

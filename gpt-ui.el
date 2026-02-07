@@ -684,9 +684,8 @@ allowing you to compare responses side-by-side."
           (unless info
             (user-error "Unknown model: %s" model-name))
           (let* ((model-id (plist-get info :id))
-                 (model-max-tokens (or (plist-get info :max-tokens) "64000"))
-                 (model-thinking-budget (number-to-string (/ (string-to-number model-max-tokens)
-                                                             gpt-thinking-budget-fraction)))
+                 (model-max-tokens (or (plist-get info :max-tokens) 64000))
+                 (model-thinking-budget (/ model-max-tokens gpt-thinking-budget-fraction))
                  ;; Dynamically bind per-run model and settings
                  ;; API type is derived from gpt-model via gpt--current-api-type
                  (gpt-model model-id)

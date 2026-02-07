@@ -665,7 +665,7 @@
   (let ((gpt-backends nil)  ; Clear cache
         (gpt-anthropic-key (getenv "ANTHROPIC_API_KEY"))
         (gpt-thinking-enabled nil)
-        (gpt-thinking-budget "10000")
+        (gpt-thinking-budget 10000)
         (gpt-interleaved-thinking nil)
         (gpt-web-search nil))
     (let* ((backend (gpt-get-backend 'anthropic))
@@ -727,7 +727,7 @@
   (let ((gpt-backends nil)
         (gpt-anthropic-key (getenv "ANTHROPIC_API_KEY"))
         (gpt-thinking-enabled nil)
-        (gpt-thinking-budget "10000")
+        (gpt-thinking-budget 10000)
         (gpt-interleaved-thinking nil)
         (gpt-web-search nil))
     (let* ((backend (gpt-get-backend 'anthropic))

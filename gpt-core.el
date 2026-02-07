@@ -79,7 +79,7 @@ Validates cached backends to ensure they are the correct type."
        (gpt-anthropic-create
         gpt-anthropic-key
         :thinking-enabled gpt-thinking-enabled
-        :thinking-budget (string-to-number gpt-thinking-budget)
+        :thinking-budget gpt-thinking-budget
         :interleaved-thinking gpt-interleaved-thinking
         :web-search gpt-web-search)))
     ('google
@@ -98,23 +98,23 @@ Call this after changing API keys or backend settings."
 ;;; Model definitions
 
 (defcustom gpt-available-models
-  '(("GPT-5.2" . (:api openai :id "gpt-5.2" :max-tokens "400000"))
-    ("GPT-5.1" . (:api openai :id "gpt-5.1" :max-tokens "400000"))
-    ("GPT-5 Mini" . (:api openai :id "gpt-5-mini" :max-tokens "200000"))
-    ("Claude 4.5 Opus" . (:api anthropic :id "claude-opus-4-5" :max-tokens "32000"))
-    ("Claude 4.5 Sonnet" . (:api anthropic :id "claude-sonnet-4-5" :max-tokens "64000"))
-    ("Gemini 3 Pro (Preview)" . (:api google :id "gemini-3-pro-preview" :max-tokens "60000")))
+  '(("GPT-5.2" . (:api openai :id "gpt-5.2" :max-tokens 400000))
+    ("GPT-5.1" . (:api openai :id "gpt-5.1" :max-tokens 400000))
+    ("GPT-5 Mini" . (:api openai :id "gpt-5-mini" :max-tokens 200000))
+    ("Claude 4.6 Opus" . (:api anthropic :id "claude-opus-4-6" :max-tokens 32000))
+    ("Claude 4.5 Sonnet" . (:api anthropic :id "claude-sonnet-4-5" :max-tokens 64000))
+    ("Gemini 3 Pro (Preview)" . (:api google :id "gemini-3-pro-preview" :max-tokens 60000)))
   "Available models for GPT commands.
 Each entry is (DISPLAY-NAME . PLIST) where PLIST contains:
   :api        - API provider symbol (openai, anthropic, google)
   :id         - Model ID string for the API
-  :max-tokens - Maximum output tokens as string"
+  :max-tokens - Maximum output tokens as integer"
   :type '(alist :key-type string :value-type plist)
   :group 'gpt)
 
-(defcustom gpt-multi-models-default '("GPT-5.2" "Claude 4.5 Opus" "Gemini 3 Pro (Preview)")
+(defcustom gpt-multi-models-default '("GPT-5.2" "Claude 4.6 Opus" "Gemini 3 Pro (Preview)")
   "Models used by `gpt-chat-multi-models'.
-Use a prefix argument (C-u) to pick models interactively.
+Use \\[universal-argument] to pick models interactively.
 Model names must match keys in `gpt-available-models'."
   :type '(repeat (string :tag "Model name (display label)"))
   :group 'gpt)
@@ -144,7 +144,7 @@ Thinking budget = max_tokens / this value."
   :type 'integer
   :group 'gpt)
 
-(defvar gpt-thinking-budget "21333"
+(defvar gpt-thinking-budget 21333
   "Token budget for extended thinking mode.
 Automatically set based on `gpt-thinking-budget-fraction'.")
 
@@ -152,13 +152,10 @@ Automatically set based on `gpt-thinking-budget-fraction'.")
 
 (defun gpt-update-model-settings ()
   "Update max_tokens and thinking_budget based on the current model."
-  (let* ((max-tokens (or (gpt--model-max-tokens gpt-model) "64000"))
-         (max-tokens-num (string-to-number max-tokens))
-         (thinking-budget-num (/ max-tokens-num gpt-thinking-budget-fraction))
-         (thinking-budget (number-to-string thinking-budget-num))
+  (let* ((max-tokens (or (gpt--model-max-tokens gpt-model) 64000))
          (api-type (gpt--get-model-api gpt-model)))
     (setq gpt-max-tokens max-tokens)
-    (setq gpt-thinking-budget thinking-budget)
+    (setq gpt-thinking-budget (/ max-tokens gpt-thinking-budget-fraction))
     ;; Update backend for new API type (only after init complete)
     (when (and api-type (featurep 'gpt-core))
       (setq gpt-current-backend (gpt-get-backend api-type)))))
@@ -177,15 +174,15 @@ NEWVAL is the new value and OPERATION is the kind of change (set/let)."
     (let ((gpt-model newval))
       (gpt-update-model-settings))))
 
-(defcustom gpt-model "claude-opus-4-5"
-  "The model to use (e.g., \\='gpt-5.2\\=', \\='claude-opus-4-5\\=')."
+(defcustom gpt-model "claude-opus-4-6"
+  "The model to use (e.g., \\='gpt-5.2\\=', \\='claude-opus-4-6\\=')."
   :type 'string
   :set #'gpt--set-model
   :group 'gpt)
 
-(defcustom gpt-max-tokens "64000"
+(defcustom gpt-max-tokens 64000
   "The max_tokens value used with the chosen model."
-  :type 'string
+  :type 'integer
   :group 'gpt)
 
 (defcustom gpt-temperature "0"

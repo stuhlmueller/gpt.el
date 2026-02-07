@@ -123,7 +123,7 @@ Returns the request process when using curl, nil otherwise."
     (let* ((api-type (gpt--current-api-type))
            (messages (gpt-parse-buffer-messages buffer))
            (options (list :model gpt-model
-                          :max-tokens (string-to-number gpt-max-tokens)
+                          :max-tokens gpt-max-tokens
                           :temperature (string-to-number gpt-temperature)))
            ;; Add provider-specific options
            (options (if (eq api-type 'anthropic)
@@ -131,7 +131,7 @@ Returns the request process when using curl, nil otherwise."
                          (plist-put
                           (plist-put
                            (plist-put options :thinking-enabled gpt-thinking-enabled)
-                           :thinking-budget (string-to-number gpt-thinking-budget))
+                           :thinking-budget gpt-thinking-budget)
                           :interleaved-thinking gpt-interleaved-thinking)
                          :web-search gpt-web-search)
                       options))
