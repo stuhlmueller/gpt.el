@@ -426,11 +426,11 @@
     (should (member "gemini-3-pro-preview" (oref backend models)))))
 
 (ert-deftest gpt-test-google-headers ()
-  "Test Google header generation (API key in URL, not headers)."
+  "Test Google header generation with API key."
   (let* ((backend (gpt-google-create "test-key"))
          (headers (gpt-backend-headers backend)))
-    ;; Google uses URL-based auth, so no auth headers
-    (should (null headers))))
+    (should (assoc "x-goog-api-key" headers))
+    (should (equal (cdr (assoc "x-goog-api-key" headers)) "test-key"))))
 
 (ert-deftest gpt-test-google-build-url ()
   "Test Google URL building."
@@ -438,10 +438,12 @@
     (let ((url (gpt-google--build-url backend "gemini-2.0-flash" nil)))
       (should (string-match-p "gemini-2.0-flash" url))
       (should (string-match-p "generateContent" url))
-      (should (string-match-p "key=test-key" url)))
+      ;; API key should NOT be in URL (it's in headers now)
+      (should-not (string-match-p "key=" url)))
     (let ((stream-url (gpt-google--build-url backend "gemini-2.0-flash" t)))
       (should (string-match-p "streamGenerateContent" stream-url))
-      (should (string-match-p "alt=sse" stream-url)))))
+      (should (string-match-p "alt=sse" stream-url))
+      (should-not (string-match-p "key=" stream-url)))))
 
 (ert-deftest gpt-test-google-request-data-basic ()
   "Test Google basic request data building."

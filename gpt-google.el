@@ -41,15 +41,13 @@ If STREAM is non-nil, build streaming URL."
                           (oref backend stream-url)
                         (oref backend url))))
     (concat (format url-template model)
-            "?key=" (oref backend key)
-            (when stream "&alt=sse"))))
+            (when stream "?alt=sse"))))
 
 ;;; Implementation of generic methods
 
-(cl-defmethod gpt-backend-headers ((_backend gpt-google-backend))
-  "Return HTTP headers for Google requests.
-API key is passed in URL, so no auth headers needed."
-  nil)
+(cl-defmethod gpt-backend-headers ((backend gpt-google-backend))
+  "Return HTTP headers for Google requests using BACKEND key."
+  (list (cons "x-goog-api-key" (oref backend key))))
 
 (defun gpt-google--convert-messages (messages)
   "Convert standard MESSAGES format to Google's format."
