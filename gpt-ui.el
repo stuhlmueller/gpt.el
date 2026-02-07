@@ -827,6 +827,8 @@ CONTEXT-MODE can be:
   "Toggle extended thinking mode for Anthropic models (enabled by default)."
   (interactive)
   (setq gpt-thinking-enabled (not gpt-thinking-enabled))
+  (when (eq (gpt--current-api-type) 'anthropic)
+    (gpt-update-backend))
   (message "Extended thinking mode %s"
            (if gpt-thinking-enabled "enabled" "disabled")))
 
@@ -835,6 +837,8 @@ CONTEXT-MODE can be:
   "Toggle interleaved thinking mode for Anthropic models (enabled by default)."
   (interactive)
   (setq gpt-interleaved-thinking (not gpt-interleaved-thinking))
+  (when (eq (gpt--current-api-type) 'anthropic)
+    (gpt-update-backend))
   (message "Interleaved thinking mode %s"
            (if gpt-interleaved-thinking "enabled" "disabled")))
 
@@ -843,6 +847,8 @@ CONTEXT-MODE can be:
   "Toggle web search for Anthropic models."
   (interactive)
   (setq gpt-web-search (not gpt-web-search))
+  (when (eq (gpt--current-api-type) 'anthropic)
+    (gpt-update-backend))
   (message "Web search %s"
            (if gpt-web-search "enabled" "disabled")))
 
