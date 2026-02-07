@@ -247,17 +247,20 @@ ON-COMPLETE is called with (SUCCESS ERROR-MSG) when done."
                              (format "Process terminated: %s" (string-trim event)))))
                    ;; Check for API error in response
                    (when (string-match-p "\"error\"" gpt-http--stream-buffer)
-                     (condition-case nil
-                         (let* ((buf gpt-http--stream-buffer)
-                                (json-start (string-match "{[^}]*\"error\"" buf))
-                                (response (when json-start
-                                            (gpt-backend--json-read-from-string
-                                             (substring buf json-start)))))
-                           (when (plist-get response :error)
-                             (setq success nil
-                                   error-msg (gpt-http--parse-api-error
-                                              response (or http-status 0)))))
-                       (error nil)))
+                     (let ((buf gpt-http--stream-buffer)
+                           (pos 0))
+                       ;; Try parsing JSON from each { to find the error object
+                       (while (and (not error-msg)
+                                   (string-match "{" buf pos))
+                         (setq pos (1+ (match-beginning 0)))
+                         (condition-case nil
+                             (let ((response (gpt-backend--json-read-from-string
+                                              (substring buf (match-beginning 0)))))
+                               (when (plist-get response :error)
+                                 (setq success nil
+                                       error-msg (gpt-http--parse-api-error
+                                                  response (or http-status 0)))))
+                           (error nil)))))
                    ;; If we have an HTTP error but no parsed message, provide generic one
                    (when (and (not success) (not error-msg) http-status (>= http-status 400))
                      (setq error-msg (format "HTTP error %d" http-status)))))
